@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Refração do Laser e Lei de Snell · Laboratórios Virtuais de Física</title>
+    <link rel="stylesheet" href="../../src/style.css" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="lab">
+      <header class="lab__header">
+        <div class="lab__header-top">
+          <a href="../../index.html" class="lab__back" id="btn-back">
+            <span aria-hidden="true">←</span> Voltar ao Catálogo de Experimentos
+          </a>
+          <span class="lab__tag">Experimento Óptico 01</span>
+        </div>
+        <div class="lab__header-content">
+          <div>
+            <h1 id="lab-main-title">Refração da Luz e Lei de Snell-Descartes</h1>
+            <p class="lab__subtitle" id="lab-main-subtitle">
+              Explore o desvio da luz entre dois meios ópticos na <strong>Bancada do Laser</strong> ou teste a compensação da <strong>Profundidade Aparente</strong> no <strong>Desafio do Arqueiro</strong>.
+            </p>
+          </div>
+        </div>
+
+        <!-- Seletor de Cenas do Laboratório -->
+        <nav class="lab__nav-tabs" role="tablist" aria-label="Cenas do Laboratório">
+          <button type="button" class="lab__tab lab__tab--active" id="tab-bancada" role="tab" aria-selected="true">
+            🔬 Bancada Óptica do Laser
+          </button>
+          <button type="button" class="lab__tab" id="tab-minigame" role="tab" aria-selected="false">
+            🏹 Desafio do Arqueiro (Minigame)
+          </button>
+        </nav>
+      </header>
+
+      <main class="lab__main">
+        <section class="lab__canvas-wrap">
+          <div class="lab__canvas-header">
+            <span class="lab__canvas-title" id="canvas-header-title">Bancada Óptica Virtual</span>
+            <div class="lab__canvas-hints">
+              <span class="lab__hint-badge" id="canvas-header-hint">💡 Dica: Clique e arraste o emissor laser no plano</span>
+            </div>
+          </div>
+          <canvas id="canvas" class="lab__canvas" width="800" height="560"></canvas>
+        </section>
+
+        <aside class="lab__panel">
+          <!-- PAINEL 1: BANCADA ÓPTICA DO LASER -->
+          <div id="panel-bancada" class="lab__panel-scene">
+            <!-- Meios Ópticos -->
+            <fieldset class="lab__section">
+              <legend>Meios Ópticos</legend>
+              <div class="lab__row">
+                <label for="material-superior">Meio Superior</label>
+                <select id="material-superior" class="lab__select"></select>
+              </div>
+              <div class="lab__row">
+                <label for="material-inferior">Meio Inferior</label>
+                <select id="material-inferior" class="lab__select"></select>
+              </div>
+              <div class="lab__row-actions">
+                <button type="button" id="btn-inverter-meios" class="lab__btn-secondary">
+                  ⇄ Inverter Meios
+                </button>
+              </div>
+            </fieldset>
+
+            <!-- Fonte de Luz Laser -->
+            <fieldset class="lab__section">
+              <legend>Fonte Laser (<span id="readout-lambda-header">632.8 nm</span>)</legend>
+              <div class="lab__swatches" id="laser-swatches" role="radiogroup" aria-label="Comprimento de onda do laser"></div>
+            </fieldset>
+
+            <!-- Medições e Verificação de Snell -->
+            <fieldset class="lab__section">
+              <legend>Telemetria e Lei de Snell</legend>
+              <dl class="lab__readout">
+                <dt>Ângulo de Incidência (θ₁)</dt>
+                <dd id="readout-t1">—</dd>
+
+                <dt>Ângulo de Reflexão (θᵣ)</dt>
+                <dd id="readout-tr">—</dd>
+
+                <dt>Ângulo de Refração (θ₂)</dt>
+                <dd id="readout-t2">—</dd>
+
+                <dt>Ângulo Crítico (θc)</dt>
+                <dd id="readout-tc">—</dd>
+
+                <dt>Relação de Snell</dt>
+                <dd id="readout-snell-status" class="lab__snell-box">—</dd>
+
+                <dt>Estado do Fenômeno</dt>
+                <dd id="readout-estado" class="lab__estado-box">—</dd>
+              </dl>
+            </fieldset>
+
+            <!-- Opções Didáticas da Bancada -->
+            <fieldset class="lab__section">
+              <legend>Ferramentas Didáticas</legend>
+              <div class="lab__toggle-row">
+                <label class="lab__checkbox-label">
+                  <input type="checkbox" id="check-transferidor" checked />
+                  <span>Exibir Transferidor Graduado</span>
+                </label>
+              </div>
+              <div class="lab__toggle-row">
+                <label class="lab__checkbox-label">
+                  <input type="checkbox" id="check-rotulos" checked />
+                  <span>Exibir Rótulos nos Feixes</span>
+                </label>
+              </div>
+            </fieldset>
+          </div>
+
+          <!-- PAINEL 2: DESAFIO DO ARQUEIRO (MINIGAME) -->
+          <div id="panel-minigame" class="lab__panel-scene lab__panel-hidden">
+            <!-- Controles de Mira e Disparo -->
+            <fieldset class="lab__section">
+              <legend>Controle do Arco</legend>
+              <div class="lab__row">
+                <div class="lab__row-header">
+                  <label for="slider-mira-angulo">Ângulo da Mira</label>
+                  <span id="readout-mira-angulo" class="lab__param-val">30.0°</span>
+                </div>
+                <input
+                  type="range"
+                  id="slider-mira-angulo"
+                  class="lab__slider"
+                  min="-15"
+                  max="70"
+                  step="0.5"
+                  value="30"
+                />
+              </div>
+
+              <div class="lab__game-actions">
+                <button type="button" id="btn-disparar-flecha" class="lab__btn-primary">
+                  🏹 Disparar Flecha <kbd class="lab__kbd">Espaço</kbd>
+                </button>
+                <button type="button" id="btn-novo-peixe" class="lab__btn-secondary">
+                  🐟 Novo Peixe
+                </button>
+              </div>
+            </fieldset>
+
+            <!-- Placar da Pesca -->
+            <fieldset class="lab__section">
+              <legend>Placar da Pesca</legend>
+              <dl class="lab__readout lab__readout--grid">
+                <dt>Acertos</dt>
+                <dd id="readout-acertos" class="lab__readout-acertos">0</dd>
+
+                <dt>Tentativas</dt>
+                <dd id="readout-tentativas">0</dd>
+
+                <dt>Precisão</dt>
+                <dd id="readout-precisao">0%</dd>
+              </dl>
+            </fieldset>
+
+            <!-- Feedback Imediato Pedagógico -->
+            <div id="readout-game-feedback" class="lab__game-feedback lab__game-feedback--info">
+              <div class="lab__game-feedback-title">🏹 Mire e Dispare!</div>
+              <div class="lab__game-feedback-sub">
+                A refração faz o peixe parecer mais raso. Mire abaixo da imagem aparente!
+              </div>
+            </div>
+
+            <!-- Opções de Mira -->
+            <fieldset class="lab__section">
+              <legend>Opções de Mira</legend>
+              <div class="lab__toggle-row">
+                <label class="lab__checkbox-label" title="Oculte a linha guia e tente acertar o peixe usando apenas sua intuição da refração">
+                  <input type="checkbox" id="check-ocultar-guia" />
+                  <span>Ocultar Linha Guia da Mira</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <!-- Cartão Teórico Explicativo -->
+            <div class="lab__theory-box">
+              <h4 class="lab__theory-title">💡 Por que erramos ao mirar onde vemos?</h4>
+              <p class="lab__theory-desc">
+                A luz que sai do peixe na água (<em>n</em> ≈ 1,333) sofre refração ao entrar no ar (<em>n</em> ≈ 1,000), afastando-se da reta normal. Nossos olhos interpretam os raios em linha reta, projetando uma <strong>imagem aparente</strong> mais próxima da superfície (<em>h'</em> ≈ 0,75 · <em>h</em>).
+              </p>
+              <p class="lab__theory-tip">
+                <strong>Técnica Indígena e Óptica:</strong> Para acertar o peixe verdadeiro, o arqueiro precisa mirar <em>abaixo</em> da imagem que enxerga!
+              </p>
+            </div>
+          </div>
+        </aside>
+      </main>
+
+      <footer class="lab__footer">
+        <p>Laboratórios Virtuais de Física · Projeto de Iniciação Científica</p>
+      </footer>
+    </div>
+    <script type="module" src="main.ts"></script>
+  </body>
+</html>
