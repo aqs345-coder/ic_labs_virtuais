@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: './',
+  base: '/ic_labs_virtuais/',
   build: {
     rollupOptions: {
       input: {
