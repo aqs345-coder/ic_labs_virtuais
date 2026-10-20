@@ -1,9 +1,11 @@
 import { calcularRaios, anguloCriticoGraus, type Cena, type Raios } from './simulation';
-import { PARES_MATERIAIS, materialPorId, MATERIAIS } from './materials';
+import { PARES_MATERIAIS, materialPorId, MATERIAIS, indiceRefracaoParaComprimentoOnda } from './materials';
 import { LASERS, laserPorId, type LaserPreset } from './lasers';
 import { renderScene, type SceneOptions } from './scene';
 import { paraGraus } from './physics';
 import { MinigameArqueiro } from './minigame';
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
 
 interface Estado {
   cena: Cena;
@@ -17,8 +19,11 @@ const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const selectSuperior = document.getElementById('material-superior') as HTMLSelectElement;
 const selectInferior = document.getElementById('material-inferior') as HTMLSelectElement;
 const btnInverterMeios = document.getElementById('btn-inverter-meios') as HTMLButtonElement | null;
+const btnAjustarCritico = document.getElementById('btn-ajustar-critico') as HTMLButtonElement | null;
 const swatchesContainer = document.getElementById('laser-swatches') as HTMLDivElement;
 
+const readoutN1 = document.getElementById('readout-n1') as HTMLElement | null;
+const readoutN2 = document.getElementById('readout-n2') as HTMLElement | null;
 const readoutT1 = document.getElementById('readout-t1') as HTMLElement;
 const readoutTr = document.getElementById('readout-tr') as HTMLElement;
 const readoutT2 = document.getElementById('readout-t2') as HTMLElement;
@@ -46,6 +51,9 @@ let estado: Estado;
 let dragAtivo = false;
 let dirty = true;
 
+// Posição alvo para suavização contínua (evita mudanças e saltos bruscos)
+const laserAlvo = { x: 0, y: 0 };
+
 function alternarCena(novaCena: 'bancada' | 'minigame'): void {
   if (cenaAtiva === novaCena) return;
   cenaAtiva = novaCena;
@@ -60,7 +68,7 @@ function alternarCena(novaCena: 'bancada' | 'minigame'): void {
     panelMinigame?.classList.add('lab__panel-hidden');
 
     if (canvasTitle) canvasTitle.textContent = 'Bancada Óptica Virtual';
-    if (canvasHint) canvasHint.textContent = '💡 Dica: Clique e arraste o emissor laser no plano';
+    if (canvasHint) canvasHint.textContent = '💡 Dica: Clique e arraste o emissor laser suavemente no plano';
 
     minigameInstancia?.pausar();
     dirty = true;
@@ -101,6 +109,12 @@ function criarCenaInicial(): Cena {
   const yInterface = altura * 0.5;
   const xAlvo = largura * 0.5;
 
+  const xInicial = xAlvo - 180;
+  const yInicial = yInterface - 140;
+
+  laserAlvo.x = xInicial;
+  laserAlvo.y = yInicial;
+
   return {
     largura,
     altura,
@@ -108,9 +122,10 @@ function criarCenaInicial(): Cena {
     xAlvo,
     superior,
     inferior,
+    comprimentoOndaNm: laser.comprimentoOndaNm,
     laser: {
-      x: xAlvo - 180,
-      y: yInterface - 140,
+      x: xInicial,
+      y: yInicial,
       cor: laser.cor,
       intensidade: 1,
     },
@@ -166,7 +181,7 @@ function atualizarCenaDeControles(): void {
   estado.cena.inferior = inferior;
   estado.cena.laser.cor = estado.laserAtivo.cor;
 
-  recalcularERender();
+  dirty = true;
 }
 
 function inverterMeios(): void {
@@ -180,6 +195,7 @@ function inverterMeios(): void {
 function selecionarLaser(id: string): void {
   const laser = laserPorId(id);
   estado.laserAtivo = laser;
+  estado.cena.comprimentoOndaNm = laser.comprimentoOndaNm;
   estado.cena.laser.cor = laser.cor;
 
   if (readoutLambdaHeader) {
@@ -192,28 +208,59 @@ function selecionarLaser(id: string): void {
     btn.setAttribute('aria-checked', isSelected ? 'true' : 'false');
   }
 
-  recalcularERender();
+  dirty = true;
+}
+
+function ajustarParaAnguloCritico(): void {
+  const laserNoSup = estado.cena.laser.y < estado.cena.yInterface;
+  const m1 = laserNoSup ? estado.cena.superior : estado.cena.inferior;
+  const m2 = laserNoSup ? estado.cena.inferior : estado.cena.superior;
+
+  const n1Efetivo = indiceRefracaoParaComprimentoOnda(m1, estado.cena.comprimentoOndaNm);
+  const n2Efetivo = indiceRefracaoParaComprimentoOnda(m2, estado.cena.comprimentoOndaNm);
+
+  if (n1Efetivo <= n2Efetivo) return;
+
+  const thetaC = Math.asin(n2Efetivo / n1Efetivo);
+  const dx = estado.cena.laser.x - estado.cena.xAlvo;
+  const dy = estado.cena.laser.y - estado.cena.yInterface;
+  const raio = Math.max(160, Math.hypot(dx, dy));
+  const sinalX = dx >= 0 ? 1 : -1;
+  const sinalY = laserNoSup ? -1 : 1;
+
+  laserAlvo.x = estado.cena.xAlvo + sinalX * raio * Math.sin(thetaC);
+  laserAlvo.y = estado.cena.yInterface + sinalY * raio * Math.cos(thetaC);
+  dirty = true;
 }
 
 function recalcularERender(): void {
   estado.raios = calcularRaios(estado.cena);
   atualizarLeitura();
-  dirty = true;
   render();
 }
 
 function atualizarLeitura(): void {
   const { raios } = estado;
-  const { fisica, meio2 } = raios;
+  const { fisica, meio1, meio2 } = raios;
 
   const t1Graus = paraGraus(fisica.anguloIncidencia);
   const trGraus = paraGraus(fisica.anguloReflexao);
 
+  if (readoutN1) {
+    readoutN1.textContent = `${raios.n1Efetivo.toFixed(4)} (${meio1.nome})`;
+  }
+  if (readoutN2) {
+    readoutN2.textContent = `${raios.n2Efetivo.toFixed(4)} (${meio2.nome})`;
+  }
+
   readoutT1.textContent = `${t1Graus.toFixed(1)}°`;
   readoutTr.textContent = `${trGraus.toFixed(1)}°`;
 
-  if (fisica.reflexaoTotal) {
-    readoutT2.textContent = 'Inexistente (Reflexão Total)';
+  if (fisica.ehAnguloCritico) {
+    readoutT2.textContent = '90.0° (Rasante)';
+    readoutT2.dataset.alert = 'critico';
+  } else if (fisica.reflexaoTotal) {
+    readoutT2.textContent = '∄';
     readoutT2.dataset.alert = 'true';
   } else if (fisica.anguloRefracao !== null) {
     const t2Graus = paraGraus(fisica.anguloRefracao);
@@ -223,30 +270,29 @@ function atualizarLeitura(): void {
 
   const critico = anguloCriticoGraus(raios);
   if (critico === null) {
-    readoutTc.textContent = 'Não ocorre (n₁ ≤ n₂)';
+    readoutTc.textContent = 'Não ocorre';
     readoutTc.dataset.alert = 'false';
+    if (btnAjustarCritico) {
+      btnAjustarCritico.disabled = true;
+      btnAjustarCritico.title = 'Ângulo crítico só existe quando n₁ > n₂';
+    }
   } else {
     readoutTc.textContent = `${critico.toFixed(1)}°`;
     readoutTc.dataset.alert = t1Graus >= critico ? 'true' : 'false';
+    if (btnAjustarCritico) {
+      btnAjustarCritico.disabled = false;
+      btnAjustarCritico.title = 'Ajusta o laser suavemente para o ângulo crítico (θ₁ = θc)';
+    }
   }
 
-  // Verificação empírica de Snell em tempo real
-  if (fisica.reflexaoTotal) {
-    readoutSnellStatus.innerHTML = `
-      <span class="lab__snell-val">n₁·sen(θ₁) = ${raios.n1SinT1.toFixed(3)}</span>
-      <span class="lab__snell-sep">&gt; n₂ (${meio2.indiceRefracao.toFixed(3)})</span>
-    `;
+  // Atualização do estado do fenômeno
+  if (fisica.ehAnguloCritico) {
+    readoutEstado.textContent = 'Ângulo Crítico (θ₁ = θc): Feixe refratado rasante à interface horizontal (90°)';
+    readoutEstado.dataset.status = 'critico';
+  } else if (fisica.reflexaoTotal) {
     readoutEstado.textContent = 'Reflexão Total Interna (100% refletido)';
     readoutEstado.dataset.status = 'total';
   } else {
-    const n2Sin = raios.n2SinT2 !== null ? raios.n2SinT2.toFixed(3) : '—';
-    readoutSnellStatus.innerHTML = `
-      <span class="lab__snell-val">${raios.n1SinT1.toFixed(3)}</span>
-      <span class="lab__snell-sep">=</span>
-      <span class="lab__snell-val">${n2Sin}</span>
-      <span class="lab__snell-ok">✓ Confirmado</span>
-    `;
-
     if (fisica.aproximacaoDaNormal) {
       readoutEstado.textContent = 'Refração com aproximação da normal (n₂ > n₁)';
       readoutEstado.dataset.status = 'normal';
@@ -258,9 +304,6 @@ function atualizarLeitura(): void {
 }
 
 function render(): void {
-  if (!dirty) return;
-  dirty = false;
-
   const opts: SceneOptions = {
     canvas,
     cena: estado.cena,
@@ -288,10 +331,10 @@ function onResize(): void {
   estado.cena.xAlvo = w * 0.5;
 
   const margem = 24;
-  estado.cena.laser.x = Math.max(margem, Math.min(w - margem, estado.cena.laser.x));
-  estado.cena.laser.y = Math.max(margem, Math.min(h - margem, estado.cena.laser.y));
+  laserAlvo.x = Math.max(margem, Math.min(w - margem, laserAlvo.x));
+  laserAlvo.y = Math.max(margem, Math.min(h - margem, laserAlvo.y));
 
-  recalcularERender();
+  dirty = true;
 }
 
 function getCanvasPoint(clientX: number, clientY: number): { x: number; y: number } {
@@ -333,15 +376,12 @@ function onPointerMove(e: PointerEvent): void {
   }
 
   const margem = 24;
-  estado.cena.laser.x = Math.max(margem, Math.min(estado.cena.largura - margem, ponto.x));
-  estado.cena.laser.y = Math.max(margem, Math.min(estado.cena.altura - margem, ponto.y));
+  const alvoX = Math.max(margem, Math.min(estado.cena.largura - margem, ponto.x));
+  const alvoY = Math.max(margem, Math.min(estado.cena.altura - margem, ponto.y));
 
-  // Evita que o laser fique exatamente colado na linha de interface gerando vetor nulo
-  if (Math.abs(estado.cena.laser.y - estado.cena.yInterface) < 6) {
-    estado.cena.laser.y = estado.cena.yInterface - 8;
-  }
-
-  recalcularERender();
+  laserAlvo.x = alvoX;
+  laserAlvo.y = alvoY;
+  dirty = true;
 }
 
 function onPointerUp(e: PointerEvent): void {
@@ -350,6 +390,33 @@ function onPointerUp(e: PointerEvent): void {
   dragAtivo = false;
   canvas.releasePointerCapture(e.pointerId);
   canvas.style.cursor = 'default';
+}
+
+/**
+ * Loop principal de animação e suavização (60 FPS com lerp amortecido).
+ * Elimina transições abruptas e solavancos ao movimentar o laser ou alternar meios/ângulos.
+ */
+function animar(): void {
+  if (cenaAtiva === 'bancada') {
+    const dx = laserAlvo.x - estado.cena.laser.x;
+    const dy = laserAlvo.y - estado.cena.laser.y;
+    const distSq = dx * dx + dy * dy;
+
+    if (distSq > 0.005) {
+      // Amortecimento suave: mais dinâmico ao arrastar, e ultra-suave ao soltar/ajustar
+      const fatorSuavizacao = dragAtivo ? 0.32 : 0.16;
+      estado.cena.laser.x += dx * fatorSuavizacao;
+      estado.cena.laser.y += dy * fatorSuavizacao;
+      dirty = true;
+    }
+
+    if (dirty) {
+      dirty = false;
+      recalcularERender();
+    }
+  }
+
+  requestAnimationFrame(animar);
 }
 
 function init(): void {
@@ -374,11 +441,14 @@ function init(): void {
     btnInverterMeios.addEventListener('click', inverterMeios);
   }
 
+  if (btnAjustarCritico) {
+    btnAjustarCritico.addEventListener('click', ajustarParaAnguloCritico);
+  }
+
   if (checkTransferidor) {
     checkTransferidor.addEventListener('change', () => {
       estado.exibirTransferidor = checkTransferidor.checked;
       dirty = true;
-      render();
     });
   }
 
@@ -386,7 +456,6 @@ function init(): void {
     checkRotulos.addEventListener('change', () => {
       estado.exibirRotulos = checkRotulos.checked;
       dirty = true;
-      render();
     });
   }
 
@@ -432,8 +501,18 @@ function init(): void {
 
   window.addEventListener('resize', onResize);
 
+  if (readoutSnellStatus) {
+    katex.render('n_1 \\cdot \\sin(\\theta_1) = n_2 \\cdot \\sin(\\theta_2)', readoutSnellStatus, {
+      throwOnError: false,
+    });
+  }
+
   selecionarLaser(estado.laserAtivo.id);
   onResize();
+  recalcularERender();
+
+  // Inicia o loop contínuo de suavização
+  requestAnimationFrame(animar);
 }
 
 init();

@@ -70,21 +70,24 @@
 
             <!-- Fonte de Luz Laser -->
             <fieldset class="lab__section">
-              <legend>Fonte Laser (<span id="readout-lambda-header">632.8 nm</span>)</legend>
+              <legend>Fonte Laser </legend>
               <div class="lab__swatches" id="laser-swatches" role="radiogroup" aria-label="Comprimento de onda do laser"></div>
+              <p class="lab__disperse-note">
+                <strong>Dispersão (Cauchy):</strong> Comprimentos de onda menores (violeta) sofrem maior desvio refrativo que os maiores (vermelho).
+              </p>
             </fieldset>
 
             <!-- Medições e Verificação de Snell -->
             <fieldset class="lab__section">
               <legend>Telemetria e Lei de Snell</legend>
               <dl class="lab__readout">
-                <dt>Ângulo de Incidência (θ₁)</dt>
+                <dt>Ângulo de Incidência</dt>
                 <dd id="readout-t1">—</dd>
 
-                <dt>Ângulo de Reflexão (θᵣ)</dt>
+                <dt>Ângulo de Reflexão</dt>
                 <dd id="readout-tr">—</dd>
 
-                <dt>Ângulo de Refração (θ₂)</dt>
+                <dt>Ângulo de Refração</dt>
                 <dd id="readout-t2">—</dd>
 
                 <dt>Ângulo Crítico (θc)</dt>
@@ -96,6 +99,12 @@
                 <dt>Estado do Fenômeno</dt>
                 <dd id="readout-estado" class="lab__estado-box">—</dd>
               </dl>
+
+              <div class="lab__row-actions" style="margin-top: 10px;">
+                <button type="button" id="btn-ajustar-critico" class="lab__btn-secondary" title="Ajusta o laser suavemente para o ângulo crítico exato (θ1 = θc)">
+                  🎯 Ajustar para Ângulo Crítico (θc)
+                </button>
+              </div>
             </fieldset>
 
             <!-- Opções Didáticas da Bancada -->

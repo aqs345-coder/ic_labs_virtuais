@@ -9,7 +9,7 @@ import {
   type ResultadoRefracao,
   type Vetor2D,
 } from './physics';
-import { type Material } from './materials';
+import { indiceRefracaoParaComprimentoOnda, type Material } from './materials';
 
 export interface Cena {
   largura: number;
@@ -20,6 +20,8 @@ export interface Cena {
   xAlvo: number;
   superior: Material;
   inferior: Material;
+  /** Comprimento de onda ativo do feixe laser em nanômetros (λ). */
+  comprimentoOndaNm: number;
   laser: { x: number; y: number; cor: string; intensidade: number };
 }
 
@@ -36,7 +38,7 @@ export interface Raios {
   refletido: Vetor2D;
   /** Ponto final do feixe refletido na borda do canvas. */
   pontoFimRefletido: Vetor2D;
-  /** Vetor unitário do feixe refratado (para dentro do meio 2), ou null em reflexão total. */
+  /** Vetor unitário do feixe refratado (para dentro do meio 2 ou rasante), ou null em reflexão total. */
   refratado: Vetor2D | null;
   /** Ponto final do feixe refratado na borda do canvas, ou null em reflexão total. */
   pontoFimRefratado: Vetor2D | null;
@@ -46,6 +48,12 @@ export interface Raios {
   laserNoSuperior: boolean;
   meio1: Material;
   meio2: Material;
+  /** Índice de refração efetivo n1(λ) considerando a dispersão cromática do laser. */
+  n1Efetivo: number;
+  /** Índice de refração efetivo n2(λ) considerando a dispersão cromática do laser. */
+  n2Efetivo: number;
+  /** Comprimento de onda em nanômetros utilizado nos cálculos. */
+  comprimentoOndaNm: number;
   /** n1 · sen(θ1) para validação empírica da Lei de Snell. */
   n1SinT1: number;
   /** n2 · sen(θ2) para validação empírica da Lei de Snell. */
@@ -57,6 +65,8 @@ export interface Raios {
  *
  * O meio onde o laser se encontra é sempre tratado como Meio 1 (incidente).
  * A interface horizontal divide o Meio Superior e Meio Inferior.
+ *
+ * Considera a dispersão cromática através da Equação de Cauchy para cada material.
  */
 export function calcularRaios(cena: Cena): Raios {
   const alvo: Vetor2D = { x: cena.xAlvo, y: cena.yInterface };
@@ -66,14 +76,17 @@ export function calcularRaios(cena: Cena): Raios {
   const meio1 = laserNoSuperior ? cena.superior : cena.inferior;
   const meio2 = laserNoSuperior ? cena.inferior : cena.superior;
 
+  const n1Efetivo = indiceRefracaoParaComprimentoOnda(meio1, cena.comprimentoOndaNm);
+  const n2Efetivo = indiceRefracaoParaComprimentoOnda(meio2, cena.comprimentoOndaNm);
+
   // Vetor do laser para a interface.
   const bruta = subtrair(alvo, laser);
-  const incidente =
-    bruta.x === 0 && bruta.y === 0
-      ? laserNoSuperior
-        ? { x: 0, y: 1 }
-        : { x: 0, y: -1 }
-      : normalizar(bruta);
+  let incidente: Vetor2D;
+  if (Math.hypot(bruta.x, bruta.y) < 1e-4) {
+    incidente = laserNoSuperior ? { x: 0, y: 1 } : { x: 0, y: -1 };
+  } else {
+    incidente = normalizar(bruta);
+  }
 
   // A normal aponta do Meio 1 para o Meio 2:
   // Se o laser está no superior, o Meio 2 está abaixo (Y positivo no canvas).
@@ -83,28 +96,37 @@ export function calcularRaios(cena: Cena): Raios {
   const fisica = refratar(
     incidente,
     normal,
-    meio1.indiceRefracao,
-    meio2.indiceRefracao,
+    n1Efetivo,
+    n2Efetivo,
   );
 
   const refletido = fisica.direcaoRefletida;
   const refratado = fisica.direcaoRefratada;
 
-  // Feixe 1 (Incidente): começa no laser e cessa RIGOROSAMENTE no ponto de contato
+  // Feixe 1 (Incidente): começa no laser e cessa no ponto de contato
   const pontoFimIncidente: Vetor2D = { x: alvo.x, y: alvo.y };
 
   // Feixe 3 (Refletido): parte da interface e se estende até a borda do canvas no Meio 1
   const pontoFimRefletido = pontoIntersecaoBorda(alvo, refletido, cena.largura, cena.altura);
 
-  // Feixe 2 (Refratado): parte da interface e se estende até a borda do canvas no Meio 2 (se não houver reflexão total)
-  const pontoFimRefratado = refratado
-    ? pontoIntersecaoBorda(alvo, refratado, cena.largura, cena.altura)
-    : null;
+  // Feixe 2 (Refratado): parte da interface e se estende até a borda do canvas
+  // Se for ângulo crítico, o feixe é estritamente rasante à interface horizontal
+  let pontoFimRefratado: Vetor2D | null = null;
+  if (refratado) {
+    if (fisica.ehAnguloCritico) {
+      pontoFimRefratado = {
+        x: refratado.x >= 0 ? cena.largura : 0,
+        y: cena.yInterface,
+      };
+    } else {
+      pontoFimRefratado = pontoIntersecaoBorda(alvo, refratado, cena.largura, cena.altura);
+    }
+  }
 
-  const n1SinT1 = meio1.indiceRefracao * Math.sin(fisica.anguloIncidencia);
+  const n1SinT1 = n1Efetivo * Math.sin(fisica.anguloIncidencia);
   const n2SinT2 =
     fisica.anguloRefracao !== null
-      ? meio2.indiceRefracao * Math.sin(fisica.anguloRefracao)
+      ? n2Efetivo * Math.sin(fisica.anguloRefracao)
       : null;
 
   return {
@@ -120,16 +142,19 @@ export function calcularRaios(cena: Cena): Raios {
     laserNoSuperior,
     meio1,
     meio2,
+    n1Efetivo,
+    n2Efetivo,
+    comprimentoOndaNm: cena.comprimentoOndaNm,
     n1SinT1,
     n2SinT2,
   };
 }
 
-/** Ângulo crítico em graus para o par em uso, ou null se não existir (n1 <= n2). */
+/** Ângulo crítico em graus para o par em uso e comprimento de onda ativo, ou null se não existir (n1 <= n2). */
 export function anguloCriticoGraus(raios: Raios): number | null {
   const critico = anguloCritico(
-    raios.meio1.indiceRefracao,
-    raios.meio2.indiceRefracao,
+    raios.n1Efetivo,
+    raios.n2Efetivo,
   );
   return critico === null ? null : paraGraus(critico);
 }

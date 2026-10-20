@@ -18,8 +18,10 @@ function desenharMeio(
   largura: number,
   altura: number,
   material: Material,
-  posicao: 'Superior' | 'Inferior',
+  _posicao: 'Superior' | 'Inferior',
   eMeioIncidente: boolean,
+  nEfetivo: number,
+  _lambdaNm: number,
 ): void {
   // Preenchimento do meio óptico
   ctx.fillStyle = material.cor;
@@ -27,14 +29,14 @@ function desenharMeio(
 
   // Cartão técnico de identificação do meio
   const cardX = x + 16;
-  const cardY = posicao === 'Superior' ? y + 16 : y + 16;
-  const cardLargura = 220;
-  const cardAltura = 48;
+  const cardY = y + 16;
+  const cardLargura = 230;
+  const cardAltura = 52;
 
   ctx.save();
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
   ctx.strokeStyle = material.corAcento;
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1.2;
   ctx.beginPath();
   ctx.roundRect(cardX, cardY, cardLargura, cardAltura, 6);
   ctx.fill();
@@ -48,15 +50,16 @@ function desenharMeio(
   const roleText = eMeioIncidente ? 'MEIO 1 (INCIDENTE)' : 'MEIO 2 (TRANSMISSÃO)';
   ctx.fillText(roleText, cardX + 10, cardY + 8);
 
-  // Nome do material e índice de refração
+  // Nome do material
   ctx.fillStyle = material.corTexto;
   ctx.font = '700 14px Inter, system-ui, sans-serif';
-  ctx.fillText(material.nome, cardX + 10, cardY + 24);
+  ctx.fillText(material.nome, cardX + 10, cardY + 26);
 
+  // Índice de refração efetivo n(λ) com dispersão de Cauchy
   ctx.fillStyle = '#0f172a';
-  ctx.font = '500 13px "JetBrains Mono", monospace';
+  ctx.font = '600 13px "JetBrains Mono", monospace';
   ctx.textAlign = 'right';
-  ctx.fillText(`n = ${material.indiceRefracao.toFixed(4)}`, cardX + cardLargura - 10, cardY + 25);
+  ctx.fillText(`n(λ) = ${nEfetivo.toFixed(4)}`, cardX + cardLargura - 10, cardY + 24);
 
   ctx.restore();
 }
@@ -310,8 +313,10 @@ export function renderScene(opts: SceneOptions): void {
   const xAlvo = cena.xAlvo;
 
   // 1. Meios ópticos superior e inferior
-  desenharMeio(ctx, 0, 0, w, yInterface, cena.superior, 'Superior', raios.laserNoSuperior);
-  desenharMeio(ctx, 0, yInterface, w, h - yInterface, cena.inferior, 'Inferior', !raios.laserNoSuperior);
+  const nSuperior = raios.laserNoSuperior ? raios.n1Efetivo : raios.n2Efetivo;
+  const nInferior = raios.laserNoSuperior ? raios.n2Efetivo : raios.n1Efetivo;
+  desenharMeio(ctx, 0, 0, w, yInterface, cena.superior, 'Superior', raios.laserNoSuperior, nSuperior, cena.comprimentoOndaNm);
+  desenharMeio(ctx, 0, yInterface, w, h - yInterface, cena.inferior, 'Inferior', !raios.laserNoSuperior, nInferior, cena.comprimentoOndaNm);
 
   // 2. Linha da Interface (Superfície de Contato)
   ctx.save();
@@ -369,8 +374,8 @@ export function renderScene(opts: SceneOptions): void {
   );
 
   // FEIXE 3: Refletido (parte da interface e retorna ao Meio 1)
-  // Em reflexão total interna, 100% da luz é refletida; em reflexão parcial, a intensidade é discreta (~35%)
-  const intensidadeRefletida = raios.fisica.reflexaoTotal ? 1.0 : 0.35;
+  // Em reflexão total interna, 100% da luz é refletida; em reflexão parcial, a intensidade é calibrada
+  const intensidadeRefletida = raios.fisica.reflexaoTotal ? 1.0 : (raios.fisica.ehAnguloCritico ? 0.90 : 0.35);
   desenharFeixeLaser(
     ctx,
     pontoIncidencia,
@@ -380,23 +385,26 @@ export function renderScene(opts: SceneOptions): void {
     exibirRotulosAngulos ? 'Feixe Refletido' : undefined,
   );
 
-  // FEIXE 2: Refratado (parte da interface e penetra no Meio 2, DESENHADO SOMENTE SE NÃO HOUVER REFLEXÃO TOTAL)
-  // Intensidade atenuada (0.50) para transmitir visualmente a perda de potência luminosa ao entrar no meio
+  // FEIXE 2: Refratado (desenhado se houver transmissão ou feixe rasante no ângulo crítico)
   if (raios.pontoFimRefratado && !raios.fisica.reflexaoTotal) {
+    const rotuloRefratado = raios.fisica.ehAnguloCritico
+      ? 'Feixe Rasante (θ₂ = 90°)'
+      : 'Feixe Refratado';
+    const intensidadeRefratada = raios.fisica.ehAnguloCritico ? 0.85 : 0.50;
+
     desenharFeixeLaser(
       ctx,
       pontoIncidencia,
       raios.pontoFimRefratado,
       laserCor,
-      0.50,
-      exibirRotulosAngulos ? 'Feixe Refratado' : undefined,
+      intensidadeRefratada,
+      exibirRotulosAngulos ? rotuloRefratado : undefined,
     );
   }
 
   // 6. Arcos dos ângulos
   if (exibirRotulosAngulos) {
     // Vetores em relação ao ponto de incidência:
-    // O raio incidente chega em pontoIncidencia vindo de laserPos: vetor aponta de alvo para laser (sentido de abertura do ângulo)
     const anguloParaLaser = Math.atan2(laserPos.y - yInterface, laserPos.x - xAlvo);
     const anguloNormalMeio1 = raios.laserNoSuperior ? -Math.PI / 2 : Math.PI / 2;
 
@@ -427,14 +435,17 @@ export function renderScene(opts: SceneOptions): void {
       `θᵣ = ${trGraus}°`,
     );
 
-    // Ângulo refratado (se houver transmissão)
+    // Ângulo refratado (se houver transmissão ou rasante)
     if (raios.pontoFimRefratado && !raios.fisica.reflexaoTotal && raios.fisica.anguloRefracao !== null) {
       const anguloNormalMeio2 = raios.laserNoSuperior ? Math.PI / 2 : -Math.PI / 2;
       const anguloParaRefratado = Math.atan2(
         raios.pontoFimRefratado.y - yInterface,
         raios.pontoFimRefratado.x - xAlvo,
       );
-      const t2Graus = paraGraus(raios.fisica.anguloRefracao).toFixed(1);
+      const rotuloAnguloT2 = raios.fisica.ehAnguloCritico
+        ? 'θ₂ = 90.0° (Rasante)'
+        : `θ₂ = ${paraGraus(raios.fisica.anguloRefracao).toFixed(1)}°`;
+
       desenharArcoAngulo(
         ctx,
         pontoIncidencia,
@@ -442,29 +453,45 @@ export function renderScene(opts: SceneOptions): void {
         anguloNormalMeio2,
         anguloParaRefratado,
         '#047857',
-        `θ₂ = ${t2Graus}°`,
+        rotuloAnguloT2,
       );
     }
   }
 
-  // 7. Alerta didático de Reflexão Total Interna
-  if (raios.fisica.reflexaoTotal) {
+  // 7. Alertas didáticos: Ângulo Crítico ou Reflexão Total Interna
+  if (raios.fisica.ehAnguloCritico) {
     ctx.save();
     const avisoY = raios.laserNoSuperior ? yInterface + 36 : yInterface - 36;
-    ctx.fillStyle = '#b91c1c';
-    ctx.strokeStyle = '#fca5a5';
-    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.roundRect(xAlvo - 130, avisoY - 14, 260, 28, 6);
+    ctx.roundRect(xAlvo - 180, avisoY - 14, 360, 28, 6);
+    ctx.fillStyle = '#eff6ff';
+    ctx.fill();
+    ctx.strokeStyle = '#93c5fd';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#1d4ed8';
+    ctx.font = '700 12px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🎯 ÂNGULO CRÍTICO (θ₁ = θc) · FEIXE RASANTE A 90°', xAlvo, avisoY);
+    ctx.restore();
+  } else if (raios.fisica.reflexaoTotal) {
+    ctx.save();
+    const avisoY = raios.laserNoSuperior ? yInterface + 36 : yInterface - 36;
+    ctx.beginPath();
+    ctx.roundRect(xAlvo - 140, avisoY - 14, 280, 28, 6);
     ctx.fillStyle = '#fef2f2';
     ctx.fill();
+    ctx.strokeStyle = '#fca5a5';
+    ctx.lineWidth = 1;
     ctx.stroke();
 
     ctx.fillStyle = '#b91c1c';
     ctx.font = '700 12px Inter, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('⚠ REFLEXÃO TOTAL INTERNA (θ₁ ≥ θc)', xAlvo, avisoY);
+    ctx.fillText('⚠ REFLEXÃO TOTAL INTERNA (θ₁ > θc)', xAlvo, avisoY);
     ctx.restore();
   }
 

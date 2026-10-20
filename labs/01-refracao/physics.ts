@@ -19,14 +19,16 @@ export interface ResultadoRefracao {
   anguloReflexao: number;
   /** Ângulo de refração em radianos, ou null quando ocorre reflexão total. */
   anguloRefracao: number | null;
-  /** Vetor unitário da direção do feixe refratado, ou null em reflexão total. */
+  /** Vetor unitário da direção do feixe refratado, ou null em reflexão total estrita. */
   direcaoRefratada: Vetor2D | null;
   /** Vetor unitário da direção do feixe refletido. */
   direcaoRefletida: Vetor2D;
-  /** true quando sen(θ1) > n2/n1 e nenhum feixe atravessa a interface. */
+  /** true quando sen(θ1) > n2/n1 (além do ângulo crítico) e nenhum feixe atravessa a interface. */
   reflexaoTotal: boolean;
   /** true quando |θ2| < |θ1|, o raio se aproxima da normal (n2 > n1). */
   aproximacaoDaNormal: boolean;
+  /** true quando θ1 == θc (dentro da tolerância), ocasionando feixe refratado rasante paralelo ao eixo horizontal. */
+  ehAnguloCritico: boolean;
 }
 
 export function subtrair(a: Vetor2D, b: Vetor2D): Vetor2D {
@@ -73,6 +75,9 @@ export function refletir(direcao: Vetor2D, normal: Vetor2D): Vetor2D {
  * Refrata um feixe que viaja no meio 1 (n1) em direção à interface,
  * entrando no meio 2 (n2).
  *
+ * Inclui tratamento exato para o Ângulo Crítico (θ1 == θc), no qual
+ * o feixe refratado emerge a 90° paralelo ao eixo horizontal (interface).
+ *
  * @param direcao Vetor apontando na direção de propagação do feixe em direção à interface.
  * @param normal Normal à interface orientada do Meio 1 para o Meio 2.
  * @param n1 Índice de refração do meio de incidência.
@@ -103,8 +108,32 @@ export function refratar(
 
   const direcaoRefletida = normalizar(refletir(i, normalEfetiva));
 
-  // Reflexão Total Interna quando sen²(θ2) >= 1
-  if (sin2Theta2 >= 1.0 - 1e-9) {
+  // Tolerância para o caso de Ângulo Crítico: |sen²(θ2) - 1| <= 0.003 (~0.15° de tolerância)
+  const TOLERANCIA_CRITICO = 0.003;
+  const ehCritico = n1 > n2 && Math.abs(sin2Theta2 - 1.0) <= TOLERANCIA_CRITICO;
+
+  if (ehCritico) {
+    // Caso de Ângulo Crítico exato ou muito próximo:
+    // θ1 = θc, θ2 = 90° (π/2 rad).
+    // O feixe refratado emerge exatamente paralelo à interface horizontal.
+    // O sentido horizontal segue a propagação do feixe incidente ao longo da interface.
+    const sentidoX = i.x >= 0 ? 1 : -1;
+    const direcaoRefratada: Vetor2D = { x: sentidoX, y: 0 };
+
+    return {
+      anguloIncidencia,
+      anguloReflexao,
+      anguloRefracao: Math.PI / 2,
+      direcaoRefratada,
+      direcaoRefletida,
+      reflexaoTotal: false,
+      aproximacaoDaNormal: false,
+      ehAnguloCritico: true,
+    };
+  }
+
+  // Reflexão Total Interna estrita quando sen²(θ2) > 1 + TOLERANCIA
+  if (sin2Theta2 > 1.0 + TOLERANCIA_CRITICO) {
     return {
       anguloIncidencia,
       anguloReflexao,
@@ -113,6 +142,7 @@ export function refratar(
       direcaoRefletida,
       reflexaoTotal: true,
       aproximacaoDaNormal: false,
+      ehAnguloCritico: false,
     };
   }
 
@@ -135,6 +165,7 @@ export function refratar(
     direcaoRefletida,
     reflexaoTotal: false,
     aproximacaoDaNormal: n2 > n1,
+    ehAnguloCritico: false,
   };
 }
 
