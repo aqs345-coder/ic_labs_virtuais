@@ -20,7 +20,7 @@ export interface MinigameUIElements {
   readoutAcertos: HTMLElement;
   readoutTentativas: HTMLElement;
   readoutPrecisao: HTMLElement;
-  readoutFeedbackCard: HTMLElement;
+  readoutFeedbackCard?: HTMLElement | null;
   checkOcultarGuia: HTMLInputElement;
 }
 
@@ -312,11 +312,13 @@ export class MinigameArqueiro {
   private definirFeedback(tipo: 'sucesso' | 'alerta' | 'info', titulo: string, subtitulo: string): void {
     this.feedbackTexto = { tipo, titulo, subtitulo };
 
-    this.ui.readoutFeedbackCard.className = `lab__game-feedback lab__game-feedback--${tipo}`;
-    this.ui.readoutFeedbackCard.innerHTML = `
-      <div class="lab__game-feedback-title">${titulo}</div>
-      <div class="lab__game-feedback-sub">${subtitulo}</div>
-    `;
+    if (this.ui.readoutFeedbackCard) {
+      this.ui.readoutFeedbackCard.className = `lab__game-feedback lab__game-feedback--${tipo}`;
+      this.ui.readoutFeedbackCard.innerHTML = `
+        <div class="lab__game-feedback-title">${titulo}</div>
+        <div class="lab__game-feedback-sub">${subtitulo}</div>
+      `;
+    }
   }
 
   private atualizarPlacarUI(): void {

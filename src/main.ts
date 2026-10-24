@@ -18,6 +18,9 @@ function renderCard(lab: LabEntry): HTMLLIElement {
 
   const isDisponivel = lab.status === 'disponivel';
 
+  const cardMain = document.createElement('div');
+  cardMain.className = 'hub__card-main';
+
   const badge = document.createElement('span');
   badge.className = `hub__badge hub__badge--${lab.status}`;
   badge.textContent = isDisponivel ? 'Disponível para Prática' : 'Em Desenvolvimento';
@@ -38,6 +41,8 @@ function renderCard(lab: LabEntry): HTMLLIElement {
     topics.appendChild(pill);
   }
 
+  cardMain.append(badge, heading, summary, topics);
+
   if (isDisponivel) {
     const link = document.createElement('a');
     link.href = lab.href;
@@ -49,7 +54,7 @@ function renderCard(lab: LabEntry): HTMLLIElement {
     action.className = 'hub__action';
     action.innerHTML = 'Abrir Experimento <span aria-hidden="true">→</span>';
 
-    item.append(badge, heading, summary, topics, action);
+    cardMain.appendChild(action);
 
     // Permite clicar em todo o card de forma acessível e natural
     item.addEventListener('click', (e) => {
@@ -62,8 +67,20 @@ function renderCard(lab: LabEntry): HTMLLIElement {
     pending.className = 'hub__pending';
     pending.textContent = lab.title;
     heading.append(pending);
+  }
 
-    item.append(badge, heading, summary, topics);
+  item.appendChild(cardMain);
+
+  if (lab.logo) {
+    const logoWrap = document.createElement('div');
+    logoWrap.className = 'hub__card-logo-wrap';
+    const img = document.createElement('img');
+    img.src = lab.logo;
+    img.alt = `Logo do ${lab.title}`;
+    img.className = 'hub__card-logo';
+    img.loading = 'lazy';
+    logoWrap.appendChild(img);
+    item.appendChild(logoWrap);
   }
 
   return item;

@@ -7,6 +7,7 @@ export default defineConfig({
       input: {
         hub: 'index.html',
         refracao: 'labs/01-refracao/index.html',
+        arqueiro: 'labs/02-arqueiro/index.html',
       },
     },
   },

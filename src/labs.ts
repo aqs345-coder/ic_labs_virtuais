@@ -1,3 +1,6 @@
+import snellLabLogo from '../images/snell_lab_logo.jpeg';
+import snellGameLogo from '../images/snell_game_logo.jpeg';
+
 export interface LabEntry {
   id: string;
   title: string;
@@ -5,6 +8,7 @@ export interface LabEntry {
   topics: string[];
   href: string;
   status: 'disponivel' | 'em-construcao';
+  logo?: string;
 }
 
 export function resolverUrlLab(caminhoRelativo: string): string {
@@ -26,5 +30,17 @@ export const LABS: LabEntry[] = [
     topics: ['Lei de Snell', 'Reflexão', 'Refração', 'Reflexão Total'],
     href: resolverUrlLab('labs/01-refracao/index.html'),
     status: 'disponivel',
+    logo: snellLabLogo,
+  },
+  {
+    id: '02-arqueiro',
+    title: 'Desafio do Arqueiro: Profundidade Aparente',
+    summary:
+      'Experimente as consequências práticas da refração luminosa na percepção visual. ' +
+      'Compreenda o desvio dos raios ópticos entre a água e o ar e aprenda a compensar a mira para atingir o peixe verdadeiro.',
+    topics: ['Profundidade Aparente', 'Refração Prática', 'Desvio Óptico'],
+    href: resolverUrlLab('labs/02-arqueiro/index.html'),
+    status: 'disponivel',
+    logo: snellGameLogo,
   },
 ];

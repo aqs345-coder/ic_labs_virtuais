@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Refração do Laser e Lei de Snell · Laboratórios Virtuais de Física</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <link rel="stylesheet" href="../../src/style.css" />
     <link rel="stylesheet" href="style.css" />
   </head>
@@ -25,20 +30,10 @@
           <div>
             <h1 id="lab-main-title">Refração da Luz e Lei de Snell-Descartes</h1>
             <p class="lab__subtitle" id="lab-main-subtitle">
-              Explore o desvio da luz entre dois meios ópticos na <strong>Bancada do Laser</strong> ou teste a compensação da <strong>Profundidade Aparente</strong> no <strong>Desafio do Arqueiro</strong>.
+              Explore experimentalmente o desvio da luz entre dois meios ópticos na <strong>Bancada do Laser</strong>, verificando a reflexão, a refração e o ângulo crítico de Snell-Descartes.
             </p>
           </div>
         </div>
-
-        <!-- Seletor de Cenas do Laboratório -->
-        <nav class="lab__nav-tabs" role="tablist" aria-label="Cenas do Laboratório">
-          <button type="button" class="lab__tab lab__tab--active" id="tab-bancada" role="tab" aria-selected="true">
-            🔬 Bancada Óptica do Laser
-          </button>
-          <button type="button" class="lab__tab" id="tab-minigame" role="tab" aria-selected="false">
-            🏹 Desafio do Arqueiro (Minigame)
-          </button>
-        </nav>
       </header>
 
       <main class="lab__main">
@@ -75,11 +70,11 @@
 
             <!-- Fonte de Luz Laser -->
             <fieldset class="lab__section">
-              <legend>Fonte Laser </legend>
-              <div class="lab__swatches" id="laser-swatches" role="radiogroup" aria-label="Comprimento de onda do laser"></div>
-              <p class="lab__disperse-note">
-                <strong>Dispersão (Cauchy):</strong> Comprimentos de onda menores (violeta) sofrem maior desvio refrativo que os maiores (vermelho).
-              </p>
+              <legend>Fonte Laser</legend>
+              <div class="lab__laser-info">
+                <span class="lab__laser-indicator" aria-hidden="true"></span>
+                <span>Laser Vermelho (&lambda; = 650 nm)</span>
+              </div>
             </fieldset>
 
             <!-- Medições e Verificação de Snell -->
@@ -128,83 +123,6 @@
                 </label>
               </div>
             </fieldset>
-          </div>
-
-          <!-- PAINEL 2: DESAFIO DO ARQUEIRO (MINIGAME) -->
-          <div id="panel-minigame" class="lab__panel-scene lab__panel-hidden">
-            <!-- Controles de Mira e Disparo -->
-            <fieldset class="lab__section">
-              <legend>Controle do Arco</legend>
-              <div class="lab__row">
-                <div class="lab__row-header">
-                  <label for="slider-mira-angulo">Ângulo da Mira</label>
-                  <span id="readout-mira-angulo" class="lab__param-val">30.0°</span>
-                </div>
-                <input
-                  type="range"
-                  id="slider-mira-angulo"
-                  class="lab__slider"
-                  min="-15"
-                  max="70"
-                  step="0.5"
-                  value="30"
-                />
-              </div>
-
-              <div class="lab__game-actions">
-                <button type="button" id="btn-disparar-flecha" class="lab__btn-primary">
-                  🏹 Disparar Flecha <kbd class="lab__kbd">Espaço</kbd>
-                </button>
-                <button type="button" id="btn-novo-peixe" class="lab__btn-secondary">
-                  🐟 Novo Peixe
-                </button>
-              </div>
-            </fieldset>
-
-            <!-- Placar da Pesca -->
-            <fieldset class="lab__section">
-              <legend>Placar da Pesca</legend>
-              <dl class="lab__readout lab__readout--grid">
-                <dt>Acertos</dt>
-                <dd id="readout-acertos" class="lab__readout-acertos">0</dd>
-
-                <dt>Tentativas</dt>
-                <dd id="readout-tentativas">0</dd>
-
-                <dt>Precisão</dt>
-                <dd id="readout-precisao">0%</dd>
-              </dl>
-            </fieldset>
-
-            <!-- Feedback Imediato Pedagógico -->
-            <div id="readout-game-feedback" class="lab__game-feedback lab__game-feedback--info">
-              <div class="lab__game-feedback-title">🏹 Mire e Dispare!</div>
-              <div class="lab__game-feedback-sub">
-                A refração faz o peixe parecer mais raso. Mire abaixo da imagem aparente!
-              </div>
-            </div>
-
-            <!-- Opções de Mira -->
-            <fieldset class="lab__section">
-              <legend>Opções de Mira</legend>
-              <div class="lab__toggle-row">
-                <label class="lab__checkbox-label" title="Oculte a linha guia e tente acertar o peixe usando apenas sua intuição da refração">
-                  <input type="checkbox" id="check-ocultar-guia" />
-                  <span>Ocultar Linha Guia da Mira</span>
-                </label>
-              </div>
-            </fieldset>
-
-            <!-- Cartão Teórico Explicativo -->
-            <div class="lab__theory-box">
-              <h4 class="lab__theory-title">💡 Por que erramos ao mirar onde vemos?</h4>
-              <p class="lab__theory-desc">
-                A luz que sai do peixe na água (<em>n</em> ≈ 1,333) sofre refração ao entrar no ar (<em>n</em> ≈ 1,000), afastando-se da reta normal. Nossos olhos interpretam os raios em linha reta, projetando uma <strong>imagem aparente</strong> mais próxima da superfície (<em>h'</em> ≈ 0,75 · <em>h</em>).
-              </p>
-              <p class="lab__theory-tip">
-                <strong>Técnica Indígena e Óptica:</strong> Para acertar o peixe verdadeiro, o arqueiro precisa mirar <em>abaixo</em> da imagem que enxerga!
-              </p>
-            </div>
           </div>
         </aside>
       </main>

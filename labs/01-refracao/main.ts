@@ -1,9 +1,8 @@
 import { calcularRaios, anguloCriticoGraus, type Cena, type Raios } from './simulation';
-import { PARES_MATERIAIS, materialPorId, MATERIAIS, indiceRefracaoParaComprimentoOnda } from './materials';
-import { LASERS, laserPorId, type LaserPreset } from './lasers';
+import { PARES_MATERIAIS, materialPorId, MATERIAIS } from './materials';
+import { LASER_VERMELHO, type LaserPreset } from './lasers';
 import { renderScene, type SceneOptions } from './scene';
 import { paraGraus } from './physics';
-import { MinigameArqueiro } from './minigame';
 import { initTheme } from '../../src/theme';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
@@ -21,7 +20,6 @@ const selectSuperior = document.getElementById('material-superior') as HTMLSelec
 const selectInferior = document.getElementById('material-inferior') as HTMLSelectElement;
 const btnInverterMeios = document.getElementById('btn-inverter-meios') as HTMLButtonElement | null;
 const btnAjustarCritico = document.getElementById('btn-ajustar-critico') as HTMLButtonElement | null;
-const swatchesContainer = document.getElementById('laser-swatches') as HTMLDivElement;
 
 const readoutN1 = document.getElementById('readout-n1') as HTMLElement | null;
 const readoutN2 = document.getElementById('readout-n2') as HTMLElement | null;
@@ -31,23 +29,10 @@ const readoutT2 = document.getElementById('readout-t2') as HTMLElement;
 const readoutTc = document.getElementById('readout-tc') as HTMLElement;
 const readoutSnellStatus = document.getElementById('readout-snell-status') as HTMLElement;
 const readoutEstado = document.getElementById('readout-estado') as HTMLElement;
-const readoutLambdaHeader = document.getElementById('readout-lambda-header') as HTMLElement;
 
 const checkTransferidor = document.getElementById('check-transferidor') as HTMLInputElement | null;
 const checkRotulos = document.getElementById('check-rotulos') as HTMLInputElement | null;
 const btnBack = document.getElementById('btn-back') as HTMLAnchorElement | null;
-
-// Abas de Cena e Painéis
-const tabBancada = document.getElementById('tab-bancada') as HTMLButtonElement | null;
-const tabMinigame = document.getElementById('tab-minigame') as HTMLButtonElement | null;
-const panelBancada = document.getElementById('panel-bancada') as HTMLElement | null;
-const panelMinigame = document.getElementById('panel-minigame') as HTMLElement | null;
-const canvasTitle = document.getElementById('canvas-header-title') as HTMLElement | null;
-const canvasHint = document.getElementById('canvas-header-hint') as HTMLElement | null;
-
-let cenaAtiva: 'bancada' | 'minigame' = 'bancada';
-let minigameInstancia: MinigameArqueiro | null = null;
-
 let estado: Estado;
 let dragAtivo = false;
 let dirty = true;
@@ -57,41 +42,6 @@ const MARGEM_LASER = 42;
 
 // Posição alvo para suavização contínua (evita mudanças e saltos bruscos)
 const laserAlvo = { x: 0, y: 0 };
-
-function alternarCena(novaCena: 'bancada' | 'minigame'): void {
-  if (cenaAtiva === novaCena) return;
-  cenaAtiva = novaCena;
-
-  if (novaCena === 'bancada') {
-    tabBancada?.classList.add('lab__tab--active');
-    tabBancada?.setAttribute('aria-selected', 'true');
-    tabMinigame?.classList.remove('lab__tab--active');
-    tabMinigame?.setAttribute('aria-selected', 'false');
-
-    panelBancada?.classList.remove('lab__panel-hidden');
-    panelMinigame?.classList.add('lab__panel-hidden');
-
-    if (canvasTitle) canvasTitle.textContent = 'Bancada Óptica Virtual';
-    if (canvasHint) canvasHint.textContent = '💡 Dica: Clique e arraste o emissor laser suavemente no plano';
-
-    minigameInstancia?.pausar();
-    dirty = true;
-    render();
-  } else {
-    tabMinigame?.classList.add('lab__tab--active');
-    tabMinigame?.setAttribute('aria-selected', 'true');
-    tabBancada?.classList.remove('lab__tab--active');
-    tabBancada?.setAttribute('aria-selected', 'false');
-
-    panelMinigame?.classList.remove('lab__panel-hidden');
-    panelBancada?.classList.add('lab__panel-hidden');
-
-    if (canvasTitle) canvasTitle.textContent = 'Desafio da Pesca com Arco: Profundidade Aparente';
-    if (canvasHint) canvasHint.textContent = '🏹 Dica: Mire com o mouse/toque e clique para disparar (ou Espaço)';
-
-    minigameInstancia?.iniciar();
-  }
-}
 
 // Configuração segura do link de retorno ao hub
 if (btnBack) {
@@ -104,8 +54,7 @@ function criarCenaInicial(): Cena {
   const par = PARES_MATERIAIS[0] || { superiorId: 'ar', inferiorId: 'agua' };
   const superior = materialPorId(par.superiorId);
   const inferior = materialPorId(par.inferiorId);
-  const laser = LASERS[4] ?? LASERS[0];
-  if (!laser) throw new Error('Nenhum laser disponível');
+  const laser = LASER_VERMELHO;
 
   const rect = canvas.getBoundingClientRect();
   const largura = rect.width || 800;
@@ -126,7 +75,6 @@ function criarCenaInicial(): Cena {
     xAlvo,
     superior,
     inferior,
-    comprimentoOndaNm: laser.comprimentoOndaNm,
     laser: {
       x: xInicial,
       y: yInicial,
@@ -161,21 +109,6 @@ function popularMateriais(): void {
   }
 }
 
-function popularLasers(): void {
-  swatchesContainer.innerHTML = '';
-  for (const laser of LASERS) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'lab__swatch';
-    btn.style.setProperty('--swatch-color', laser.cor);
-    btn.dataset.laserId = laser.id;
-    btn.setAttribute('role', 'radio');
-    btn.setAttribute('aria-label', `${laser.nome} · ${laser.comprimentoOndaNm} nm`);
-    btn.innerHTML = `<span class="lab__swatch-dot" style="background: ${laser.cor}"></span><span class="lab__swatch-label">${laser.comprimentoOndaNm} nm</span>`;
-    btn.addEventListener('click', () => selecionarLaser(laser.id));
-    swatchesContainer.appendChild(btn);
-  }
-}
 
 function atualizarCenaDeControles(): void {
   const superior = materialPorId(selectSuperior.value);
@@ -196,24 +129,6 @@ function inverterMeios(): void {
   atualizarCenaDeControles();
 }
 
-function selecionarLaser(id: string): void {
-  const laser = laserPorId(id);
-  estado.laserAtivo = laser;
-  estado.cena.comprimentoOndaNm = laser.comprimentoOndaNm;
-  estado.cena.laser.cor = laser.cor;
-
-  if (readoutLambdaHeader) {
-    readoutLambdaHeader.textContent = `${laser.comprimentoOndaNm} nm · ${laser.nome}`;
-  }
-
-  for (const btn of swatchesContainer.querySelectorAll<HTMLButtonElement>('.lab__swatch')) {
-    const isSelected = btn.dataset.laserId === id;
-    btn.dataset.selected = isSelected ? 'true' : 'false';
-    btn.setAttribute('aria-checked', isSelected ? 'true' : 'false');
-  }
-
-  dirty = true;
-}
 
 function ajustarParaAnguloCritico(): void {
   dragAtivo = false;
@@ -223,12 +138,12 @@ function ajustarParaAnguloCritico(): void {
   const m1 = laserNoSup ? estado.cena.superior : estado.cena.inferior;
   const m2 = laserNoSup ? estado.cena.inferior : estado.cena.superior;
 
-  const n1Efetivo = indiceRefracaoParaComprimentoOnda(m1, estado.cena.comprimentoOndaNm);
-  const n2Efetivo = indiceRefracaoParaComprimentoOnda(m2, estado.cena.comprimentoOndaNm);
+  const n1 = m1.indiceRefracao;
+  const n2 = m2.indiceRefracao;
 
-  if (n1Efetivo <= n2Efetivo) return;
+  if (n1 <= n2) return;
 
-  const thetaC = Math.asin(n2Efetivo / n1Efetivo);
+  const thetaC = Math.asin(n2 / n1);
   const dx = estado.cena.laser.x - xAlvo;
   const sinalX = dx >= 0 ? 1 : -1;
   const sinalY = laserNoSup ? -1 : 1;
@@ -269,10 +184,10 @@ function atualizarLeitura(): void {
   const trGraus = paraGraus(fisica.anguloReflexao);
 
   if (readoutN1) {
-    readoutN1.textContent = `${raios.n1Efetivo.toFixed(4)} (${meio1.nome})`;
+    readoutN1.textContent = `${raios.n1.toFixed(4)} (${meio1.nome})`;
   }
   if (readoutN2) {
-    readoutN2.textContent = `${raios.n2Efetivo.toFixed(4)} (${meio2.nome})`;
+    readoutN2.textContent = `${raios.n2.toFixed(4)} (${meio2.nome})`;
   }
 
   readoutT1.textContent = `${t1Graus.toFixed(1)}°`;
@@ -338,10 +253,6 @@ function render(): void {
 }
 
 function onResize(): void {
-  if (cenaAtiva === 'minigame') {
-    minigameInstancia?.onResize();
-    return;
-  }
 
   const rect = canvas.getBoundingClientRect();
   const w = rect.width || 800;
@@ -370,7 +281,6 @@ function getCanvasPoint(clientX: number, clientY: number): { x: number; y: numbe
 }
 
 function onPointerDown(e: PointerEvent): void {
-  if (cenaAtiva !== 'bancada') return;
   if (e.target !== canvas) return;
 
   const ponto = getCanvasPoint(e.clientX, e.clientY);
@@ -387,7 +297,6 @@ function onPointerDown(e: PointerEvent): void {
 }
 
 function onPointerMove(e: PointerEvent): void {
-  if (cenaAtiva !== 'bancada') return;
 
   const ponto = getCanvasPoint(e.clientX, e.clientY);
   const dx = ponto.x - estado.cena.laser.x;
@@ -409,7 +318,6 @@ function onPointerMove(e: PointerEvent): void {
 }
 
 function onPointerUp(e: PointerEvent): void {
-  if (cenaAtiva !== 'bancada') return;
   if (!dragAtivo) return;
   dragAtivo = false;
   if (canvas.hasPointerCapture(e.pointerId)) {
@@ -423,28 +331,26 @@ function onPointerUp(e: PointerEvent): void {
  * Elimina transições abruptas e solavancos ao movimentar o laser ou alternar meios/ângulos.
  */
 function animar(): void {
-  if (cenaAtiva === 'bancada') {
-    const dx = laserAlvo.x - estado.cena.laser.x;
-    const dy = laserAlvo.y - estado.cena.laser.y;
-    const distSq = dx * dx + dy * dy;
+  const dx = laserAlvo.x - estado.cena.laser.x;
+  const dy = laserAlvo.y - estado.cena.laser.y;
+  const distSq = dx * dx + dy * dy;
 
-    if (distSq > 0.005) {
-      // Amortecimento suave: mais dinâmico ao arrastar, e ultra-suave ao soltar/ajustar
-      const fatorSuavizacao = dragAtivo ? 0.32 : 0.16;
-      estado.cena.laser.x += dx * fatorSuavizacao;
-      estado.cena.laser.y += dy * fatorSuavizacao;
+  if (distSq > 0.005) {
+    // Amortecimento suave: mais dinâmico ao arrastar, e ultra-suave ao soltar/ajustar
+    const fatorSuavizacao = dragAtivo ? 0.32 : 0.16;
+    estado.cena.laser.x += dx * fatorSuavizacao;
+    estado.cena.laser.y += dy * fatorSuavizacao;
 
-      // Salvaguarda contínua contra extravasamento de limites visíveis
-      estado.cena.laser.x = Math.max(MARGEM_LASER, Math.min(estado.cena.largura - MARGEM_LASER, estado.cena.laser.x));
-      estado.cena.laser.y = Math.max(MARGEM_LASER, Math.min(estado.cena.altura - MARGEM_LASER, estado.cena.laser.y));
+    // Salvaguarda contínua contra extravasamento de limites visíveis
+    estado.cena.laser.x = Math.max(MARGEM_LASER, Math.min(estado.cena.largura - MARGEM_LASER, estado.cena.laser.x));
+    estado.cena.laser.y = Math.max(MARGEM_LASER, Math.min(estado.cena.altura - MARGEM_LASER, estado.cena.laser.y));
 
-      dirty = true;
-    }
+    dirty = true;
+  }
 
-    if (dirty) {
-      dirty = false;
-      recalcularERender();
-    }
+  if (dirty) {
+    dirty = false;
+    recalcularERender();
   }
 
   requestAnimationFrame(animar);
@@ -452,15 +358,11 @@ function animar(): void {
 
 function init(): void {
   popularMateriais();
-  popularLasers();
-
-  const laserPadrao = LASERS[4] ?? LASERS[0];
-  if (!laserPadrao) throw new Error('Nenhum laser disponível');
 
   estado = {
     cena: criarCenaInicial(),
     raios: {} as Raios,
-    laserAtivo: laserPadrao,
+    laserAtivo: LASER_VERMELHO,
     exibirTransferidor: checkTransferidor ? checkTransferidor.checked : true,
     exibirRotulos: checkRotulos ? checkRotulos.checked : true,
   };
@@ -490,39 +392,7 @@ function init(): void {
     });
   }
 
-  // Inicialização do Minigame do Arqueiro
-  const btnDisparar = document.getElementById('btn-disparar-flecha') as HTMLButtonElement;
-  const btnNovoPeixe = document.getElementById('btn-novo-peixe') as HTMLButtonElement;
-  const sliderAngulo = document.getElementById('slider-mira-angulo') as HTMLInputElement;
-  const readoutAngulo = document.getElementById('readout-mira-angulo') as HTMLElement;
-  const readoutAcertos = document.getElementById('readout-acertos') as HTMLElement;
-  const readoutTentativas = document.getElementById('readout-tentativas') as HTMLElement;
-  const readoutPrecisao = document.getElementById('readout-precisao') as HTMLElement;
-  const readoutFeedbackCard = document.getElementById('readout-game-feedback') as HTMLElement;
-  const checkOcultarGuia = document.getElementById('check-ocultar-guia') as HTMLInputElement;
 
-  if (btnDisparar && panelMinigame) {
-    minigameInstancia = new MinigameArqueiro(canvas, {
-      containerPainel: panelMinigame,
-      btnDisparar,
-      btnNovoPeixe,
-      sliderAngulo,
-      readoutAngulo,
-      readoutAcertos,
-      readoutTentativas,
-      readoutPrecisao,
-      readoutFeedbackCard,
-      checkOcultarGuia,
-    });
-  }
-
-  // Eventos de troca de cena (Abas)
-  if (tabBancada) {
-    tabBancada.addEventListener('click', () => alternarCena('bancada'));
-  }
-  if (tabMinigame) {
-    tabMinigame.addEventListener('click', () => alternarCena('minigame'));
-  }
 
   canvas.addEventListener('pointerdown', onPointerDown);
   canvas.addEventListener('pointermove', onPointerMove);
@@ -552,7 +422,6 @@ function init(): void {
     recalcularERender();
   });
 
-  selecionarLaser(estado.laserAtivo.id);
   onResize();
   recalcularERender();
 

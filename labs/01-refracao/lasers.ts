@@ -5,49 +5,15 @@ export interface LaserPreset {
   cor: string;
 }
 
-export const LASERS: LaserPreset[] = [
-  {
-    id: 'violeta',
-    nome: 'Violeta',
-    comprimentoOndaNm: 405,
-    cor: '#7a3ff2',
-  },
-  {
-    id: 'azul',
-    nome: 'Azul',
-    comprimentoOndaNm: 450,
-    cor: '#1e6bff',
-  },
-  {
-    id: 'verde',
-    nome: 'Verde',
-    comprimentoOndaNm: 532,
-    cor: '#22e05a',
-  },
-  {
-    id: 'amarelo',
-    nome: 'Amarelo',
-    comprimentoOndaNm: 594,
-    cor: '#ffc233',
-  },
-  {
-    id: 'vermelho',
-    nome: 'Vermelho',
-    comprimentoOndaNm: 632.8,
-    cor: '#ff2d2d',
-  },
-  {
-    id: 'vermelho-profundo',
-    nome: 'Vermelho Escuro',
-    comprimentoOndaNm: 650,
-    cor: '#d10000',
-  },
-];
+export const LASER_VERMELHO: LaserPreset = {
+  id: 'vermelho',
+  nome: 'Vermelho',
+  comprimentoOndaNm: 650,
+  cor: '#ef4444',
+};
 
-export function laserPorId(id: string): LaserPreset {
-  const laser = LASERS.find((l) => l.id === id);
-  if (!laser) {
-    throw new Error(`Laser desconhecido: ${id}`);
-  }
-  return laser;
+export const LASERS: LaserPreset[] = [LASER_VERMELHO];
+
+export function laserPorId(_id?: string): LaserPreset {
+  return LASER_VERMELHO;
 }

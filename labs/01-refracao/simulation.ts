@@ -9,7 +9,7 @@ import {
   type ResultadoRefracao,
   type Vetor2D,
 } from './physics';
-import { indiceRefracaoParaComprimentoOnda, type Material } from './materials';
+import { type Material } from './materials';
 
 export interface Cena {
   largura: number;
@@ -20,8 +20,6 @@ export interface Cena {
   xAlvo: number;
   superior: Material;
   inferior: Material;
-  /** Comprimento de onda ativo do feixe laser em nanômetros (λ). */
-  comprimentoOndaNm: number;
   laser: { x: number; y: number; cor: string; intensidade: number };
 }
 
@@ -48,12 +46,10 @@ export interface Raios {
   laserNoSuperior: boolean;
   meio1: Material;
   meio2: Material;
-  /** Índice de refração efetivo n1(λ) considerando a dispersão cromática do laser. */
-  n1Efetivo: number;
-  /** Índice de refração efetivo n2(λ) considerando a dispersão cromática do laser. */
-  n2Efetivo: number;
-  /** Comprimento de onda em nanômetros utilizado nos cálculos. */
-  comprimentoOndaNm: number;
+  /** Índice de refração do meio 1 (incidente). */
+  n1: number;
+  /** Índice de refração do meio 2 (transmissão). */
+  n2: number;
   /** n1 · sen(θ1) para validação empírica da Lei de Snell. */
   n1SinT1: number;
   /** n2 · sen(θ2) para validação empírica da Lei de Snell. */
@@ -65,8 +61,6 @@ export interface Raios {
  *
  * O meio onde o laser se encontra é sempre tratado como Meio 1 (incidente).
  * A interface horizontal divide o Meio Superior e Meio Inferior.
- *
- * Considera a dispersão cromática através da Equação de Cauchy para cada material.
  */
 export function calcularRaios(cena: Cena): Raios {
   const alvo: Vetor2D = { x: cena.xAlvo, y: cena.yInterface };
@@ -76,8 +70,8 @@ export function calcularRaios(cena: Cena): Raios {
   const meio1 = laserNoSuperior ? cena.superior : cena.inferior;
   const meio2 = laserNoSuperior ? cena.inferior : cena.superior;
 
-  const n1Efetivo = indiceRefracaoParaComprimentoOnda(meio1, cena.comprimentoOndaNm);
-  const n2Efetivo = indiceRefracaoParaComprimentoOnda(meio2, cena.comprimentoOndaNm);
+  const n1 = meio1.indiceRefracao;
+  const n2 = meio2.indiceRefracao;
 
   // Vetor do laser para a interface.
   const bruta = subtrair(alvo, laser);
@@ -96,8 +90,8 @@ export function calcularRaios(cena: Cena): Raios {
   const fisica = refratar(
     incidente,
     normal,
-    n1Efetivo,
-    n2Efetivo,
+    n1,
+    n2,
   );
 
   const refletido = fisica.direcaoRefletida;
@@ -123,10 +117,10 @@ export function calcularRaios(cena: Cena): Raios {
     }
   }
 
-  const n1SinT1 = n1Efetivo * Math.sin(fisica.anguloIncidencia);
+  const n1SinT1 = n1 * Math.sin(fisica.anguloIncidencia);
   const n2SinT2 =
     fisica.anguloRefracao !== null
-      ? n2Efetivo * Math.sin(fisica.anguloRefracao)
+      ? n2 * Math.sin(fisica.anguloRefracao)
       : null;
 
   return {
@@ -142,19 +136,18 @@ export function calcularRaios(cena: Cena): Raios {
     laserNoSuperior,
     meio1,
     meio2,
-    n1Efetivo,
-    n2Efetivo,
-    comprimentoOndaNm: cena.comprimentoOndaNm,
+    n1,
+    n2,
     n1SinT1,
     n2SinT2,
   };
 }
 
-/** Ângulo crítico em graus para o par em uso e comprimento de onda ativo, ou null se não existir (n1 <= n2). */
+/** Ângulo crítico em graus para o par em uso, ou null se não existir (n1 <= n2). */
 export function anguloCriticoGraus(raios: Raios): number | null {
   const critico = anguloCritico(
-    raios.n1Efetivo,
-    raios.n2Efetivo,
+    raios.n1,
+    raios.n2,
   );
   return critico === null ? null : paraGraus(critico);
 }

@@ -24,8 +24,7 @@ function desenharMeio(
   material: Material,
   _posicao: 'Superior' | 'Inferior',
   eMeioIncidente: boolean,
-  nEfetivo: number,
-  _lambdaNm: number,
+  indiceRefracao: number,
 ): void {
   const isDark = ehTemaEscuro();
 
@@ -61,11 +60,11 @@ function desenharMeio(
   ctx.font = '700 14px Inter, system-ui, sans-serif';
   ctx.fillText(material.nome, cardX + 10, cardY + 26);
 
-  // Índice de refração efetivo n(λ) com dispersão de Cauchy
+  // Índice de refração
   ctx.fillStyle = isDark ? '#f8fafc' : '#0f172a';
   ctx.font = '600 13px "JetBrains Mono", monospace';
   ctx.textAlign = 'right';
-  ctx.fillText(`n(λ) = ${nEfetivo.toFixed(4)}`, cardX + cardLargura - 10, cardY + 24);
+  ctx.fillText(`n = ${indiceRefracao.toFixed(4)}`, cardX + cardLargura - 10, cardY + 24);
 
   ctx.restore();
 }
@@ -326,10 +325,10 @@ export function renderScene(opts: SceneOptions): void {
   const isDark = ehTemaEscuro();
 
   // 1. Meios ópticos superior e inferior
-  const nSuperior = raios.laserNoSuperior ? raios.n1Efetivo : raios.n2Efetivo;
-  const nInferior = raios.laserNoSuperior ? raios.n2Efetivo : raios.n1Efetivo;
-  desenharMeio(ctx, 0, 0, w, yInterface, cena.superior, 'Superior', raios.laserNoSuperior, nSuperior, cena.comprimentoOndaNm);
-  desenharMeio(ctx, 0, yInterface, w, h - yInterface, cena.inferior, 'Inferior', !raios.laserNoSuperior, nInferior, cena.comprimentoOndaNm);
+  const nSuperior = raios.laserNoSuperior ? raios.n1 : raios.n2;
+  const nInferior = raios.laserNoSuperior ? raios.n2 : raios.n1;
+  desenharMeio(ctx, 0, 0, w, yInterface, cena.superior, 'Superior', raios.laserNoSuperior, nSuperior);
+  desenharMeio(ctx, 0, yInterface, w, h - yInterface, cena.inferior, 'Inferior', !raios.laserNoSuperior, nInferior);
 
   // 2. Linha da Interface (Superfície de Contato)
   ctx.save();
