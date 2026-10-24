@@ -14,6 +14,12 @@ export interface Material {
   corTexto: string;
   /** Cor da borda ou acento decorativo do meio. */
   corAcento: string;
+  /** Cor de preenchimento no tema escuro. */
+  corDark?: string;
+  /** Cor do texto dos rótulos no tema escuro. */
+  corTextoDark?: string;
+  /** Cor da borda ou acento decorativo no tema escuro. */
+  corAcentoDark?: string;
 }
 
 export const MATERIAIS: Record<string, Material> = {
@@ -25,6 +31,9 @@ export const MATERIAIS: Record<string, Material> = {
     cor: '#f8fafc',
     corTexto: '#334155',
     corAcento: '#94a3b8',
+    corDark: '#090e17',
+    corTextoDark: '#94a3b8',
+    corAcentoDark: '#334155',
   },
   agua: {
     id: 'agua',
@@ -34,6 +43,9 @@ export const MATERIAIS: Record<string, Material> = {
     cor: '#e0f2fe',
     corTexto: '#0369a1',
     corAcento: '#38bdf8',
+    corDark: '#071f38',
+    corTextoDark: '#38bdf8',
+    corAcentoDark: '#0284c7',
   },
   oleo: {
     id: 'oleo',
@@ -43,6 +55,9 @@ export const MATERIAIS: Record<string, Material> = {
     cor: '#fef3c7',
     corTexto: '#b45309',
     corAcento: '#f59e0b',
+    corDark: '#261b05',
+    corTextoDark: '#fbbf24',
+    corAcentoDark: '#d97706',
   },
   vidro: {
     id: 'vidro',
@@ -52,6 +67,9 @@ export const MATERIAIS: Record<string, Material> = {
     cor: '#dcfce7',
     corTexto: '#15803d',
     corAcento: '#22c55e',
+    corDark: '#062619',
+    corTextoDark: '#4ade80',
+    corAcentoDark: '#16a34a',
   },
   diamante: {
     id: 'diamante',
@@ -61,6 +79,9 @@ export const MATERIAIS: Record<string, Material> = {
     cor: '#f3e8ff',
     corTexto: '#6b21a8',
     corAcento: '#a855f7',
+    corDark: '#1c0f33',
+    corTextoDark: '#c084fc',
+    corAcentoDark: '#9333ea',
   },
 };
 

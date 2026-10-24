@@ -4,6 +4,7 @@ import { LASERS, laserPorId, type LaserPreset } from './lasers';
 import { renderScene, type SceneOptions } from './scene';
 import { paraGraus } from './physics';
 import { MinigameArqueiro } from './minigame';
+import { initTheme } from '../../src/theme';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 
@@ -50,6 +51,9 @@ let minigameInstancia: MinigameArqueiro | null = null;
 let estado: Estado;
 let dragAtivo = false;
 let dirty = true;
+
+/** Margem mínima em pixels para garantir que o emissor laser permaneça 100% visível e manipulável */
+const MARGEM_LASER = 42;
 
 // Posição alvo para suavização contínua (evita mudanças e saltos bruscos)
 const laserAlvo = { x: 0, y: 0 };
@@ -212,7 +216,10 @@ function selecionarLaser(id: string): void {
 }
 
 function ajustarParaAnguloCritico(): void {
-  const laserNoSup = estado.cena.laser.y < estado.cena.yInterface;
+  dragAtivo = false;
+
+  const { largura, altura, yInterface, xAlvo } = estado.cena;
+  const laserNoSup = estado.cena.laser.y <= yInterface;
   const m1 = laserNoSup ? estado.cena.superior : estado.cena.inferior;
   const m2 = laserNoSup ? estado.cena.inferior : estado.cena.superior;
 
@@ -222,14 +229,29 @@ function ajustarParaAnguloCritico(): void {
   if (n1Efetivo <= n2Efetivo) return;
 
   const thetaC = Math.asin(n2Efetivo / n1Efetivo);
-  const dx = estado.cena.laser.x - estado.cena.xAlvo;
-  const dy = estado.cena.laser.y - estado.cena.yInterface;
-  const raio = Math.max(160, Math.hypot(dx, dy));
+  const dx = estado.cena.laser.x - xAlvo;
   const sinalX = dx >= 0 ? 1 : -1;
   const sinalY = laserNoSup ? -1 : 1;
 
-  laserAlvo.x = estado.cena.xAlvo + sinalX * raio * Math.sin(thetaC);
-  laserAlvo.y = estado.cena.yInterface + sinalY * raio * Math.cos(thetaC);
+  const sinThetaC = Math.sin(thetaC);
+  const cosThetaC = Math.cos(thetaC);
+
+  // Margem segura para manter o corpo e a alça do laser estritamente dentro do canvas
+  const margem = MARGEM_LASER;
+
+  // Raio máximo geometricamente permitido ao longo do feixe crítico sem extrapolar as 4 bordas do canvas
+  const rMaxX = (sinalX > 0 ? (largura - margem) - xAlvo : xAlvo - margem) / Math.max(0.001, sinThetaC);
+  const rMaxY = (laserNoSup ? yInterface - margem : (altura - margem) - yInterface) / Math.max(0.001, cosThetaC);
+  const rMax = Math.max(120, Math.min(rMaxX, rMaxY));
+  const rMin = Math.min(150, rMax);
+
+  // Preserva a distância atual do laser se compatível com o campo de visão, ou ajusta suavemente
+  const dy = estado.cena.laser.y - yInterface;
+  const rAtual = Math.hypot(dx, dy);
+  const raio = Math.min(rMax, Math.max(rMin, rAtual));
+
+  laserAlvo.x = Math.max(margem, Math.min(largura - margem, xAlvo + sinalX * raio * sinThetaC));
+  laserAlvo.y = Math.max(margem, Math.min(altura - margem, yInterface + sinalY * raio * cosThetaC));
   dirty = true;
 }
 
@@ -330,9 +352,11 @@ function onResize(): void {
   estado.cena.yInterface = h * 0.5;
   estado.cena.xAlvo = w * 0.5;
 
-  const margem = 24;
-  laserAlvo.x = Math.max(margem, Math.min(w - margem, laserAlvo.x));
-  laserAlvo.y = Math.max(margem, Math.min(h - margem, laserAlvo.y));
+  laserAlvo.x = Math.max(MARGEM_LASER, Math.min(w - MARGEM_LASER, laserAlvo.x));
+  laserAlvo.y = Math.max(MARGEM_LASER, Math.min(h - MARGEM_LASER, laserAlvo.y));
+
+  estado.cena.laser.x = Math.max(MARGEM_LASER, Math.min(w - MARGEM_LASER, estado.cena.laser.x));
+  estado.cena.laser.y = Math.max(MARGEM_LASER, Math.min(h - MARGEM_LASER, estado.cena.laser.y));
 
   dirty = true;
 }
@@ -354,8 +378,8 @@ function onPointerDown(e: PointerEvent): void {
   const dy = ponto.y - estado.cena.laser.y;
   const dist = Math.hypot(dx, dy);
 
-  // Raio de ativação do emissor laser
-  if (dist > 35) return;
+  // Raio de ativação do emissor laser (38px cobre corpo e anel)
+  if (dist > 38) return;
 
   dragAtivo = true;
   canvas.setPointerCapture(e.pointerId);
@@ -371,13 +395,13 @@ function onPointerMove(e: PointerEvent): void {
   const dist = Math.hypot(dx, dy);
 
   if (!dragAtivo) {
-    canvas.style.cursor = dist <= 35 ? 'grab' : 'default';
+    canvas.style.cursor = dist <= 38 ? 'grab' : 'default';
     return;
   }
 
-  const margem = 24;
-  const alvoX = Math.max(margem, Math.min(estado.cena.largura - margem, ponto.x));
-  const alvoY = Math.max(margem, Math.min(estado.cena.altura - margem, ponto.y));
+  // Clampa estritamente dentro da margem visível do canvas durante o arraste
+  const alvoX = Math.max(MARGEM_LASER, Math.min(estado.cena.largura - MARGEM_LASER, ponto.x));
+  const alvoY = Math.max(MARGEM_LASER, Math.min(estado.cena.altura - MARGEM_LASER, ponto.y));
 
   laserAlvo.x = alvoX;
   laserAlvo.y = alvoY;
@@ -388,7 +412,9 @@ function onPointerUp(e: PointerEvent): void {
   if (cenaAtiva !== 'bancada') return;
   if (!dragAtivo) return;
   dragAtivo = false;
-  canvas.releasePointerCapture(e.pointerId);
+  if (canvas.hasPointerCapture(e.pointerId)) {
+    canvas.releasePointerCapture(e.pointerId);
+  }
   canvas.style.cursor = 'default';
 }
 
@@ -407,6 +433,11 @@ function animar(): void {
       const fatorSuavizacao = dragAtivo ? 0.32 : 0.16;
       estado.cena.laser.x += dx * fatorSuavizacao;
       estado.cena.laser.y += dy * fatorSuavizacao;
+
+      // Salvaguarda contínua contra extravasamento de limites visíveis
+      estado.cena.laser.x = Math.max(MARGEM_LASER, Math.min(estado.cena.largura - MARGEM_LASER, estado.cena.laser.x));
+      estado.cena.laser.y = Math.max(MARGEM_LASER, Math.min(estado.cena.altura - MARGEM_LASER, estado.cena.laser.y));
+
       dirty = true;
     }
 
@@ -496,8 +527,18 @@ function init(): void {
   canvas.addEventListener('pointerdown', onPointerDown);
   canvas.addEventListener('pointermove', onPointerMove);
   canvas.addEventListener('pointerup', onPointerUp);
-  canvas.addEventListener('pointerleave', onPointerUp);
   canvas.addEventListener('pointercancel', onPointerUp);
+  canvas.addEventListener('lostpointercapture', () => {
+    dragAtivo = false;
+    canvas.style.cursor = 'default';
+  });
+
+  window.addEventListener('pointerup', (e) => {
+    if (dragAtivo) onPointerUp(e);
+  });
+  window.addEventListener('pointercancel', (e) => {
+    if (dragAtivo) onPointerUp(e);
+  });
 
   window.addEventListener('resize', onResize);
 
@@ -506,6 +547,10 @@ function init(): void {
       throwOnError: false,
     });
   }
+
+  initTheme(() => {
+    recalcularERender();
+  });
 
   selecionarLaser(estado.laserAtivo.id);
   onResize();

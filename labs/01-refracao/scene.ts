@@ -11,6 +11,10 @@ export interface SceneOptions {
   exibirRotulosAngulos?: boolean;
 }
 
+function ehTemaEscuro(): boolean {
+  return typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark';
+}
+
 function desenharMeio(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -23,8 +27,10 @@ function desenharMeio(
   nEfetivo: number,
   _lambdaNm: number,
 ): void {
+  const isDark = ehTemaEscuro();
+
   // Preenchimento do meio óptico
-  ctx.fillStyle = material.cor;
+  ctx.fillStyle = isDark ? (material.corDark ?? material.cor) : material.cor;
   ctx.fillRect(x, y, largura, altura);
 
   // Cartão técnico de identificação do meio
@@ -34,8 +40,8 @@ function desenharMeio(
   const cardAltura = 52;
 
   ctx.save();
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-  ctx.strokeStyle = material.corAcento;
+  ctx.fillStyle = isDark ? 'rgba(17, 24, 39, 0.88)' : 'rgba(255, 255, 255, 0.92)';
+  ctx.strokeStyle = isDark ? (material.corAcentoDark ?? material.corAcento) : material.corAcento;
   ctx.lineWidth = 1.2;
   ctx.beginPath();
   ctx.roundRect(cardX, cardY, cardLargura, cardAltura, 6);
@@ -43,7 +49,7 @@ function desenharMeio(
   ctx.stroke();
 
   // Badge Meio 1 / Meio 2
-  ctx.fillStyle = eMeioIncidente ? '#1d4ed8' : '#475569';
+  ctx.fillStyle = eMeioIncidente ? (isDark ? '#60a5fa' : '#1d4ed8') : (isDark ? '#94a3b8' : '#475569');
   ctx.font = '600 11px Inter, system-ui, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
@@ -51,12 +57,12 @@ function desenharMeio(
   ctx.fillText(roleText, cardX + 10, cardY + 8);
 
   // Nome do material
-  ctx.fillStyle = material.corTexto;
+  ctx.fillStyle = isDark ? (material.corTextoDark ?? material.corTexto) : material.corTexto;
   ctx.font = '700 14px Inter, system-ui, sans-serif';
   ctx.fillText(material.nome, cardX + 10, cardY + 26);
 
   // Índice de refração efetivo n(λ) com dispersão de Cauchy
-  ctx.fillStyle = '#0f172a';
+  ctx.fillStyle = isDark ? '#f8fafc' : '#0f172a';
   ctx.font = '600 13px "JetBrains Mono", monospace';
   ctx.textAlign = 'right';
   ctx.fillText(`n(λ) = ${nEfetivo.toFixed(4)}`, cardX + cardLargura - 10, cardY + 24);
@@ -70,10 +76,11 @@ function desenharTransferidor(
   y: number,
   raio: number,
 ): void {
+  const isDark = ehTemaEscuro();
   ctx.save();
-  ctx.strokeStyle = 'rgba(100, 116, 139, 0.35)';
+  ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.4)' : 'rgba(100, 116, 139, 0.35)';
   ctx.lineWidth = 1;
-  ctx.fillStyle = '#475569';
+  ctx.fillStyle = isDark ? '#94a3b8' : '#475569';
   ctx.font = '9px "JetBrains Mono", monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -156,10 +163,11 @@ function desenharFeixeLaser(
 
   // Rótulo discreto do feixe, se solicitado
   if (rotulo) {
+    const isDark = ehTemaEscuro();
     const meioX = (pontoInicial.x + pontoFinal.x) * 0.5;
     const meioY = (pontoInicial.y + pontoFinal.y) * 0.5;
     ctx.font = '600 11px Inter, sans-serif';
-    ctx.fillStyle = '#0f172a';
+    ctx.fillStyle = isDark ? '#f8fafc' : '#0f172a';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(rotulo, meioX, meioY - 12);
@@ -194,13 +202,14 @@ function desenharArcoAngulo(
   ctx.stroke();
 
   // Rótulo numérico posicionado no ponto médio do arco
+  const isDark = ehTemaEscuro();
   const anguloMedio = angulo1 + diff * 0.5;
   const rTexto = raio + 14;
   const tx = centro.x + Math.cos(anguloMedio) * rTexto;
   const ty = centro.y + Math.sin(anguloMedio) * rTexto;
 
   ctx.font = '600 11px "JetBrains Mono", monospace';
-  ctx.fillStyle = '#0f172a';
+  ctx.fillStyle = isDark ? '#f8fafc' : '#0f172a';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(textoRotulo, tx, ty);
@@ -225,7 +234,7 @@ function desenharAparelhoLaser(
   // Sombra e anel de manipulação (alça de arraste)
   ctx.beginPath();
   ctx.arc(0, 0, 22, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(29, 78, 216, 0.25)';
+  ctx.strokeStyle = 'rgba(59, 130, 246, 0.35)';
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
@@ -272,9 +281,10 @@ function desenharPontoIncidencia(
   x: number,
   y: number,
 ): void {
+  const isDark = ehTemaEscuro();
   ctx.save();
-  ctx.strokeStyle = '#0f172a';
-  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = isDark ? '#f8fafc' : '#0f172a';
+  ctx.fillStyle = isDark ? '#1e293b' : '#ffffff';
   ctx.lineWidth = 1.5;
 
   ctx.beginPath();
@@ -282,12 +292,13 @@ function desenharPontoIncidencia(
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = '#0f172a';
+  ctx.fillStyle = isDark ? '#38bdf8' : '#0f172a';
   ctx.beginPath();
   ctx.arc(x, y, 1.5, 0, Math.PI * 2);
   ctx.fill();
 
   // Rótulo do ponto O
+  ctx.fillStyle = isDark ? '#f8fafc' : '#0f172a';
   ctx.font = '600 11px Inter, sans-serif';
   ctx.fillText('O', x + 8, y - 8);
 
@@ -312,6 +323,8 @@ export function renderScene(opts: SceneOptions): void {
   const yInterface = cena.yInterface;
   const xAlvo = cena.xAlvo;
 
+  const isDark = ehTemaEscuro();
+
   // 1. Meios ópticos superior e inferior
   const nSuperior = raios.laserNoSuperior ? raios.n1Efetivo : raios.n2Efetivo;
   const nInferior = raios.laserNoSuperior ? raios.n2Efetivo : raios.n1Efetivo;
@@ -320,7 +333,7 @@ export function renderScene(opts: SceneOptions): void {
 
   // 2. Linha da Interface (Superfície de Contato)
   ctx.save();
-  ctx.strokeStyle = '#64748b';
+  ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.45)' : '#64748b';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(0, yInterface);
@@ -328,14 +341,14 @@ export function renderScene(opts: SceneOptions): void {
   ctx.stroke();
 
   ctx.font = '500 11px Inter, system-ui, sans-serif';
-  ctx.fillStyle = '#475569';
+  ctx.fillStyle = isDark ? '#94a3b8' : '#475569';
   ctx.textAlign = 'right';
   ctx.fillText('Superfície de Contato (Interface)', w - 16, yInterface - 6);
   ctx.restore();
 
   // 3. Linha Normal (N)
   ctx.save();
-  ctx.strokeStyle = '#64748b';
+  ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.45)' : '#64748b';
   ctx.lineWidth = 1.2;
   ctx.setLineDash([6, 5]);
   ctx.beginPath();
@@ -345,7 +358,7 @@ export function renderScene(opts: SceneOptions): void {
   ctx.setLineDash([]);
 
   ctx.font = '600 11px Inter, system-ui, sans-serif';
-  ctx.fillStyle = '#334155';
+  ctx.fillStyle = isDark ? '#94a3b8' : '#334155';
   ctx.textAlign = 'left';
   ctx.fillText('Normal (N)', xAlvo + 8, 16);
   ctx.fillText('Normal (N)', xAlvo + 8, h - 16);
@@ -415,7 +428,7 @@ export function renderScene(opts: SceneOptions): void {
       38,
       anguloNormalMeio1,
       anguloParaLaser,
-      '#1d4ed8',
+      isDark ? '#60a5fa' : '#1d4ed8',
       `θ₁ = ${t1Graus}°`,
     );
 
@@ -431,7 +444,7 @@ export function renderScene(opts: SceneOptions): void {
       56,
       anguloNormalMeio1,
       anguloParaRefletido,
-      '#475569',
+      isDark ? '#94a3b8' : '#475569',
       `θᵣ = ${trGraus}°`,
     );
 
@@ -452,7 +465,7 @@ export function renderScene(opts: SceneOptions): void {
         46,
         anguloNormalMeio2,
         anguloParaRefratado,
-        '#047857',
+        isDark ? '#34d399' : '#047857',
         rotuloAnguloT2,
       );
     }
@@ -464,13 +477,13 @@ export function renderScene(opts: SceneOptions): void {
     const avisoY = raios.laserNoSuperior ? yInterface + 36 : yInterface - 36;
     ctx.beginPath();
     ctx.roundRect(xAlvo - 180, avisoY - 14, 360, 28, 6);
-    ctx.fillStyle = '#eff6ff';
+    ctx.fillStyle = isDark ? 'rgba(30, 58, 138, 0.9)' : '#eff6ff';
     ctx.fill();
-    ctx.strokeStyle = '#93c5fd';
+    ctx.strokeStyle = isDark ? '#60a5fa' : '#93c5fd';
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    ctx.fillStyle = '#1d4ed8';
+    ctx.fillStyle = isDark ? '#bfdbfe' : '#1d4ed8';
     ctx.font = '700 12px Inter, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -481,13 +494,13 @@ export function renderScene(opts: SceneOptions): void {
     const avisoY = raios.laserNoSuperior ? yInterface + 36 : yInterface - 36;
     ctx.beginPath();
     ctx.roundRect(xAlvo - 140, avisoY - 14, 280, 28, 6);
-    ctx.fillStyle = '#fef2f2';
+    ctx.fillStyle = isDark ? 'rgba(127, 29, 29, 0.9)' : '#fef2f2';
     ctx.fill();
-    ctx.strokeStyle = '#fca5a5';
+    ctx.strokeStyle = isDark ? '#f87171' : '#fca5a5';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    ctx.fillStyle = '#b91c1c';
+    ctx.fillStyle = isDark ? '#fecaca' : '#b91c1c';
     ctx.font = '700 12px Inter, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

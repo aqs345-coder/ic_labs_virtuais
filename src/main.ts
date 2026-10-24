@@ -1,5 +1,8 @@
 import './style.css';
 import { LABS, type LabEntry } from './labs';
+import { initTheme } from './theme';
+
+initTheme();
 
 const list = document.querySelector<HTMLUListElement>('#lab-list');
 

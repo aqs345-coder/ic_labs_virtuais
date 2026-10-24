@@ -26,6 +26,10 @@ export interface MinigameSceneOptions {
   } | null;
 }
 
+function ehTemaEscuro(): boolean {
+  return typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark';
+}
+
 /**
  * Desenha o fundo natural: céu, horizonte com silhueta de mata ciliar e leito do rio.
  */
@@ -36,29 +40,72 @@ function desenharCenario(
   yInterface: number,
   tempo: number,
 ): void {
-  // 1. Céu tropical
+  const isDark = ehTemaEscuro();
+
+  // 1. Céu (diurno tropical ou noturno estrelado)
   const gradCeu = ctx.createLinearGradient(0, 0, 0, yInterface);
-  gradCeu.addColorStop(0, '#bae6fd');
-  gradCeu.addColorStop(0.7, '#e0f2fe');
-  gradCeu.addColorStop(1, '#f8fafc');
+  if (isDark) {
+    gradCeu.addColorStop(0, '#050814');
+    gradCeu.addColorStop(0.6, '#0c1527');
+    gradCeu.addColorStop(1, '#132238');
+  } else {
+    gradCeu.addColorStop(0, '#bae6fd');
+    gradCeu.addColorStop(0.7, '#e0f2fe');
+    gradCeu.addColorStop(1, '#f8fafc');
+  }
   ctx.fillStyle = gradCeu;
   ctx.fillRect(0, 0, w, yInterface);
 
-  // Sol suave no canto superior direito
   ctx.save();
-  const sunGrad = ctx.createRadialGradient(w - 120, 70, 0, w - 120, 70, 60);
-  sunGrad.addColorStop(0, 'rgba(254, 240, 138, 0.85)');
-  sunGrad.addColorStop(0.5, 'rgba(254, 240, 138, 0.3)');
-  sunGrad.addColorStop(1, 'rgba(254, 240, 138, 0)');
-  ctx.fillStyle = sunGrad;
-  ctx.beginPath();
-  ctx.arc(w - 120, 70, 60, 0, Math.PI * 2);
-  ctx.fill();
+  if (isDark) {
+    // Estrelas cintilantes no céu noturno
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+    const estrelas = [
+      { x: w * 0.1, y: 35, r: 1.2 },
+      { x: w * 0.18, y: 70, r: 1.0 },
+      { x: w * 0.28, y: 25, r: 1.5 },
+      { x: w * 0.38, y: 55, r: 1.0 },
+      { x: w * 0.48, y: 30, r: 1.3 },
+      { x: w * 0.58, y: 65, r: 1.1 },
+      { x: w * 0.72, y: 40, r: 1.4 },
+      { x: w * 0.85, y: 25, r: 1.2 },
+    ];
+    for (const s of estrelas) {
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Lua cheia prateada com halo
+    const moonGrad = ctx.createRadialGradient(w - 120, 65, 0, w - 120, 65, 55);
+    moonGrad.addColorStop(0, 'rgba(241, 245, 249, 0.95)');
+    moonGrad.addColorStop(0.4, 'rgba(186, 230, 253, 0.45)');
+    moonGrad.addColorStop(1, 'rgba(186, 230, 253, 0)');
+    ctx.fillStyle = moonGrad;
+    ctx.beginPath();
+    ctx.arc(w - 120, 65, 55, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.arc(w - 120, 65, 14, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // Sol suave no canto superior direito
+    const sunGrad = ctx.createRadialGradient(w - 120, 70, 0, w - 120, 70, 60);
+    sunGrad.addColorStop(0, 'rgba(254, 240, 138, 0.85)');
+    sunGrad.addColorStop(0.5, 'rgba(254, 240, 138, 0.3)');
+    sunGrad.addColorStop(1, 'rgba(254, 240, 138, 0)');
+    ctx.fillStyle = sunGrad;
+    ctx.beginPath();
+    ctx.arc(w - 120, 70, 60, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
 
   // Mata ciliar ao fundo (silhueta de vegetação na margem oposta)
   ctx.save();
-  ctx.fillStyle = '#065f46';
+  ctx.fillStyle = isDark ? '#022c22' : '#065f46';
   ctx.beginPath();
   ctx.moveTo(w * 0.45, yInterface);
   const copas = [
@@ -77,7 +124,7 @@ function desenharCenario(
   ctx.fill();
 
   // Camada frontal mais clara da vegetação
-  ctx.fillStyle = '#047857';
+  ctx.fillStyle = isDark ? '#064e3b' : '#047857';
   ctx.beginPath();
   ctx.moveTo(w * 0.55, yInterface);
   const copasFrente = [
@@ -96,10 +143,17 @@ function desenharCenario(
 
   // 2. Água do rio (Meio 2, n = 1.333)
   const gradAgua = ctx.createLinearGradient(0, yInterface, 0, h);
-  gradAgua.addColorStop(0, '#38bdf8');
-  gradAgua.addColorStop(0.3, '#0284c7');
-  gradAgua.addColorStop(0.75, '#0369a1');
-  gradAgua.addColorStop(1, '#075985');
+  if (isDark) {
+    gradAgua.addColorStop(0, '#032541');
+    gradAgua.addColorStop(0.3, '#021a30');
+    gradAgua.addColorStop(0.75, '#021324');
+    gradAgua.addColorStop(1, '#010a14');
+  } else {
+    gradAgua.addColorStop(0, '#38bdf8');
+    gradAgua.addColorStop(0.3, '#0284c7');
+    gradAgua.addColorStop(0.75, '#0369a1');
+    gradAgua.addColorStop(1, '#075985');
+  }
   ctx.fillStyle = gradAgua;
   ctx.fillRect(0, yInterface, w, h - yInterface);
 
