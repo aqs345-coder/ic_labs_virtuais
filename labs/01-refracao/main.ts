@@ -32,7 +32,6 @@ const readoutEstado = document.getElementById('readout-estado') as HTMLElement;
 
 const checkTransferidor = document.getElementById('check-transferidor') as HTMLInputElement | null;
 const checkRotulos = document.getElementById('check-rotulos') as HTMLInputElement | null;
-const btnBack = document.getElementById('btn-back') as HTMLAnchorElement | null;
 let estado: Estado;
 let dragAtivo = false;
 let dirty = true;
@@ -42,13 +41,6 @@ const MARGEM_LASER = 42;
 
 // Posição alvo para suavização contínua (evita mudanças e saltos bruscos)
 const laserAlvo = { x: 0, y: 0 };
-
-// Configuração segura do link de retorno ao hub
-if (btnBack) {
-  const base = import.meta.env.BASE_URL || '/';
-  const urlHub = base.endsWith('/') ? base : `${base}/`;
-  btnBack.href = urlHub;
-}
 
 function criarCenaInicial(): Cena {
   const par = PARES_MATERIAIS[0] || { superiorId: 'ar', inferiorId: 'agua' };

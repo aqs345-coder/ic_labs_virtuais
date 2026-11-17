@@ -12,14 +12,6 @@ const readoutAcertos = document.getElementById('readout-acertos') as HTMLElement
 const readoutTentativas = document.getElementById('readout-tentativas') as HTMLElement;
 const readoutPrecisao = document.getElementById('readout-precisao') as HTMLElement;
 const checkOcultarGuia = document.getElementById('check-ocultar-guia') as HTMLInputElement;
-const btnBack = document.getElementById('btn-back') as HTMLAnchorElement | null;
-
-// Configuração segura do link de retorno ao hub
-if (btnBack) {
-  const base = import.meta.env.BASE_URL || '/';
-  const urlHub = base.endsWith('/') ? base : `${base}/`;
-  btnBack.href = urlHub;
-}
 
 if (canvas && panelMinigame && btnDisparar && btnNovoPeixe && sliderAngulo) {
   const minigame = new MinigameArqueiro(canvas, {

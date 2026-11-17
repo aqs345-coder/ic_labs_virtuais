@@ -10,9 +10,7 @@ export function getTheme(): Theme {
   if (stored === 'light' || stored === 'dark') {
     return stored;
   }
-  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    return 'dark';
-  }
+  // Sem preferência salva, o projeto inicia sempre no tema claro.
   return 'light';
 }
 
@@ -76,17 +74,6 @@ export function initTheme(onThemeChange?: (theme: Theme) => void): Theme {
     window.addEventListener('themechange', ((e: CustomEvent<{ theme: Theme }>) => {
       onThemeChange(e.detail.theme);
     }) as EventListener);
-  }
-
-  // Ouve mudanças do sistema operacional se o usuário não tiver preferência explícita salva
-  if (window.matchMedia) {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    mediaQuery.addEventListener('change', (e) => {
-      const explicit = localStorage.getItem(STORAGE_KEY);
-      if (!explicit) {
-        setTheme(e.matches ? 'dark' : 'light');
-      }
-    });
   }
 
   return initialTheme;
